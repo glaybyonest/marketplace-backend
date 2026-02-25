@@ -1,0 +1,64 @@
+package domain
+
+import (
+	"time"
+
+	"github.com/google/uuid"
+)
+
+// Category represents a product category in adjacency-list form.
+type Category struct {
+	ID        uuid.UUID  `json:"id"`
+	ParentID  *uuid.UUID `json:"parent_id,omitempty"`
+	Name      string     `json:"name"`
+	Slug      string     `json:"slug"`
+	CreatedAt time.Time  `json:"created_at"`
+	UpdatedAt time.Time  `json:"updated_at"`
+}
+
+// CategoryNode is nested category tree response.
+type CategoryNode struct {
+	ID        uuid.UUID      `json:"id"`
+	ParentID  *uuid.UUID     `json:"parent_id,omitempty"`
+	Name      string         `json:"name"`
+	Slug      string         `json:"slug"`
+	CreatedAt time.Time      `json:"created_at"`
+	UpdatedAt time.Time      `json:"updated_at"`
+	Children  []CategoryNode `json:"children"`
+}
+
+// Product represents an item in the catalog.
+type Product struct {
+	ID          uuid.UUID `json:"id"`
+	CategoryID  uuid.UUID `json:"category_id"`
+	Name        string    `json:"name"`
+	Slug        string    `json:"slug"`
+	Description string    `json:"description,omitempty"`
+	Price       float64   `json:"price"`
+	Currency    string    `json:"currency"`
+	SKU         string    `json:"sku"`
+	StockQty    int       `json:"stock_qty"`
+	IsActive    bool      `json:"is_active"`
+	CreatedAt   time.Time `json:"created_at"`
+	UpdatedAt   time.Time `json:"updated_at"`
+}
+
+// ProductFilter describes catalog list query.
+type ProductFilter struct {
+	CategoryID *uuid.UUID
+	Query      string
+	Page       int
+	Limit      int
+	Sort       string
+}
+
+const (
+	SortPriceAsc  = "price_asc"
+	SortPriceDesc = "price_desc"
+	SortNew       = "new"
+)
+
+const (
+	ProductEventView        = "view"
+	ProductEventFavoriteAdd = "favorite_add"
+)

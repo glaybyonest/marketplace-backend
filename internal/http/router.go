@@ -1,0 +1,90 @@
+package httpapi
+
+import (
+	"log/slog"
+	"net/http"
+
+	"marketplace-backend/internal/http/handlers"
+	httpmw "marketplace-backend/internal/http/middleware"
+	"marketplace-backend/internal/security"
+	"marketplace-backend/internal/usecase"
+
+	"github.com/go-chi/chi/v5"
+	"github.com/go-chi/chi/v5/middleware"
+	"github.com/jackc/pgx/v5/pgxpool"
+)
+
+type Dependencies struct {
+	Logger                 *slog.Logger
+	DB                     *pgxpool.Pool
+	JWTManager             *security.JWTManager
+	AuthService            *usecase.AuthService
+	CatalogService         *usecase.CatalogService
+	ProfileService         *usecase.ProfileService
+	FavoritesService       *usecase.FavoritesService
+	PlacesService          *usecase.PlacesService
+	RecommendationsService *usecase.RecommendationsService
+}
+
+func NewRouter(deps Dependencies) http.Handler {
+	router := chi.NewRouter()
+	router.Use(middleware.RealIP)
+	router.Use(httpmw.RequestID)
+	router.Use(httpmw.Logger(deps.Logger))
+	router.Use(httpmw.Recoverer(deps.Logger))
+
+	authMiddleware := httpmw.NewAuth(deps.JWTManager)
+
+	authHandler := handlers.NewAuthHandler(deps.AuthService)
+	catalogHandler := handlers.NewCatalogHandler(deps.CatalogService)
+	profileHandler := handlers.NewProfileHandler(deps.ProfileService)
+	favoritesHandler := handlers.NewFavoritesHandler(deps.FavoritesService)
+	placesHandler := handlers.NewPlacesHandler(deps.PlacesService)
+	recommendationsHandler := handlers.NewRecommendationsHandler(deps.RecommendationsService)
+	healthHandler := handlers.NewHealthHandler(deps.DB)
+
+	router.Get("/healthz", healthHandler.Healthz)
+	router.Get("/readyz", healthHandler.Readyz)
+
+	router.Route("/api/v1", func(r chi.Router) {
+		r.Route("/auth", func(r chi.Router) {
+			r.Post("/register", authHandler.Register)
+			r.Post("/login", authHandler.Login)
+			r.Post("/refresh", authHandler.Refresh)
+
+			r.Group(func(r chi.Router) {
+				r.Use(authMiddleware.Handler)
+				r.Post("/logout", authHandler.Logout)
+				r.Get("/me", authHandler.Me)
+			})
+		})
+
+		r.Get("/categories", catalogHandler.CategoriesTree)
+		r.Get("/categories/slug/{slug}", catalogHandler.CategoryBySlug)
+		r.Get("/categories/{id}", catalogHandler.CategoryByID)
+
+		r.Get("/products", catalogHandler.ProductsList)
+		r.Get("/products/slug/{slug}", catalogHandler.ProductBySlug)
+		r.Get("/products/{id}", catalogHandler.ProductByID)
+
+		r.Group(func(r chi.Router) {
+			r.Use(authMiddleware.Handler)
+
+			r.Get("/profile", profileHandler.Get)
+			r.Patch("/profile", profileHandler.Update)
+
+			r.Get("/favorites", favoritesHandler.List)
+			r.Post("/favorites/{product_id}", favoritesHandler.Add)
+			r.Delete("/favorites/{product_id}", favoritesHandler.Delete)
+
+			r.Post("/places", placesHandler.Create)
+			r.Get("/places", placesHandler.List)
+			r.Patch("/places/{id}", placesHandler.Patch)
+			r.Delete("/places/{id}", placesHandler.Delete)
+
+			r.Get("/recommendations", recommendationsHandler.List)
+		})
+	})
+
+	return router
+}
