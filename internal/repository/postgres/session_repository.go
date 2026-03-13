@@ -137,6 +137,19 @@ func (r *SessionRepository) RevokeAllByUserID(ctx context.Context, userID uuid.U
 	return mapError(err)
 }
 
+func (r *SessionRepository) CleanupExpiredAndRevoked(ctx context.Context, now time.Time) (int64, error) {
+	cmd, err := r.db.Exec(ctx, `
+		DELETE FROM user_sessions
+		WHERE expires_at < $1
+		   OR (revoked_at IS NOT NULL AND revoked_at < $1 - INTERVAL '24 hours')
+		   OR (rotated_at IS NOT NULL AND rotated_at < $1 - INTERVAL '24 hours')
+	`, now)
+	if err != nil {
+		return 0, mapError(err)
+	}
+	return cmd.RowsAffected(), nil
+}
+
 func nullIfEmpty(value string) any {
 	if value == "" {
 		return nil

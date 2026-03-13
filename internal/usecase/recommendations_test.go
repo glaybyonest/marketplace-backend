@@ -3,6 +3,7 @@ package usecase
 import (
 	"context"
 	"testing"
+	"time"
 
 	"marketplace-backend/internal/domain"
 
@@ -23,6 +24,11 @@ type recommendationRepoMock struct {
 	lastLimitByCat   int
 	lastLimitPopular int
 	lastExclude      []uuid.UUID
+	cached           []domain.Product
+	cachedErr        error
+	activeUsers      []uuid.UUID
+	replacedCache    map[uuid.UUID][]RecommendationCacheItem
+	refreshStatsRows int64
 }
 
 func (m *recommendationRepoMock) FavoriteProductIDs(ctx context.Context, userID uuid.UUID) ([]uuid.UUID, error) {
@@ -57,6 +63,35 @@ func (m *recommendationRepoMock) ListPopular(ctx context.Context, excludeProduct
 	return m.popular, nil
 }
 
+func (m *recommendationRepoMock) ListCached(ctx context.Context, userID uuid.UUID, limit int) ([]domain.Product, error) {
+	if m.cachedErr != nil {
+		return nil, m.cachedErr
+	}
+	if len(m.cached) > limit {
+		return m.cached[:limit], nil
+	}
+	return m.cached, nil
+}
+
+func (m *recommendationRepoMock) ReplaceCached(ctx context.Context, userID uuid.UUID, items []RecommendationCacheItem, refreshedAt time.Time) error {
+	if m.replacedCache == nil {
+		m.replacedCache = make(map[uuid.UUID][]RecommendationCacheItem)
+	}
+	m.replacedCache[userID] = append([]RecommendationCacheItem(nil), items...)
+	return nil
+}
+
+func (m *recommendationRepoMock) ActiveUserIDs(ctx context.Context, since time.Time, limit int) ([]uuid.UUID, error) {
+	if len(m.activeUsers) > limit {
+		return m.activeUsers[:limit], nil
+	}
+	return m.activeUsers, nil
+}
+
+func (m *recommendationRepoMock) RefreshPopularityStats(ctx context.Context, refreshedAt time.Time) (int64, error) {
+	return m.refreshStatsRows, nil
+}
+
 func TestRecommendationsService(t *testing.T) {
 	product1 := domain.Product{ID: uuid.New(), Slug: "p1"}
 	product2 := domain.Product{ID: uuid.New(), Slug: "p2"}
@@ -82,6 +117,7 @@ func TestRecommendationsService(t *testing.T) {
 		wantCount int
 	}{
 		{"with favorites from categories", 20, userID, func() {}, nil, 3},
+		{"use cached recommendations", 20, userID, func() { repo.cached = []domain.Product{product4} }, nil, 1},
 		{"unauthorized", 20, uuid.Nil, func() {}, domain.ErrUnauthorized, 0},
 		{"limit default", 0, userID, func() {}, nil, 3},
 		{"limit capped", 1000, userID, func() {}, nil, 3},
@@ -182,6 +218,8 @@ func TestRecommendationsService(t *testing.T) {
 			repo.lastLimitByCat = 0
 			repo.lastLimitPopular = 0
 			repo.lastExclude = nil
+			repo.cached = nil
+			repo.cachedErr = nil
 
 			tc.prepare()
 			items, err := service.Get(context.Background(), tc.userID, tc.limit)
@@ -201,4 +239,21 @@ func TestRecommendationsService(t *testing.T) {
 			}
 		})
 	}
+
+	t.Run("refresh recommendation cache", func(t *testing.T) {
+		repo.cached = nil
+		repo.favoriteProducts = []uuid.UUID{product1.ID}
+		repo.favoriteCats = []uuid.UUID{categoryID}
+		repo.byCategories = []domain.Product{product2}
+		repo.popular = []domain.Product{product3}
+		repo.activeUsers = []uuid.UUID{userID}
+
+		refreshed, err := service.RefreshCache(context.Background(), time.Now().Add(-24*time.Hour), 50, 10)
+		require.NoError(t, err)
+		assert.Equal(t, 1, refreshed)
+		require.Contains(t, repo.replacedCache, userID)
+		require.Len(t, repo.replacedCache[userID], 2)
+		assert.Equal(t, "favorite_category", repo.replacedCache[userID][0].Source)
+		assert.Equal(t, "popular", repo.replacedCache[userID][1].Source)
+	})
 }

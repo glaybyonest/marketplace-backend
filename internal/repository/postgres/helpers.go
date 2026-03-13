@@ -2,6 +2,7 @@ package postgres
 
 import (
 	"errors"
+	"unicode/utf8"
 
 	"marketplace-backend/internal/domain"
 
@@ -31,4 +32,19 @@ func mapError(err error) error {
 	}
 
 	return err
+}
+
+func truncateText(value string, limit int) string {
+	if limit <= 0 || len(value) <= limit {
+		return value
+	}
+
+	if utf8.ValidString(value) {
+		runes := []rune(value)
+		if len(runes) <= limit {
+			return value
+		}
+		return string(runes[:limit])
+	}
+	return value[:limit]
 }

@@ -78,6 +78,18 @@ func (r *AuthActionTokenRepository) DeleteActiveByUserAndPurpose(
 	return mapError(err)
 }
 
+func (r *AuthActionTokenRepository) CleanupExpiredAndConsumed(ctx context.Context, now time.Time) (int64, error) {
+	cmd, err := r.db.Exec(ctx, `
+		DELETE FROM user_action_tokens
+		WHERE expires_at < $1
+		   OR (consumed_at IS NOT NULL AND consumed_at < $1 - INTERVAL '24 hours')
+	`, now)
+	if err != nil {
+		return 0, mapError(err)
+	}
+	return cmd.RowsAffected(), nil
+}
+
 func scanAuthActionToken(row pgx.Row, token *domain.AuthActionToken) error {
 	return row.Scan(
 		&token.ID,

@@ -9,6 +9,7 @@ import (
 	"time"
 
 	httpapi "marketplace-backend/internal/http"
+	"marketplace-backend/internal/jobs"
 	"marketplace-backend/internal/mailer"
 	"marketplace-backend/internal/observability"
 	"marketplace-backend/internal/repository/postgres"
@@ -26,6 +27,7 @@ type Application struct {
 	logger *slog.Logger
 	db     *pgxpool.Pool
 	server *http.Server
+	jobs   *jobs.Runner
 }
 
 // New builds application dependencies.
@@ -45,6 +47,7 @@ func New(cfg config.Config, logger *slog.Logger) (*Application, error) {
 	userRepo := postgres.NewUserRepository(db)
 	sessionRepo := postgres.NewSessionRepository(db)
 	actionTokenRepo := postgres.NewAuthActionTokenRepository(db)
+	emailJobRepo := postgres.NewEmailJobRepository(db)
 	auditLogRepo := postgres.NewAuditLogRepository(db)
 	errorEventRepo := postgres.NewErrorEventRepository(db)
 	categoryRepo := postgres.NewCategoryRepository(db)
@@ -59,6 +62,7 @@ func New(cfg config.Config, logger *slog.Logger) (*Application, error) {
 	jwtManager := security.NewJWTManager(cfg.JWTSecret, cfg.AccessTokenTTL)
 	passwordManager := security.NewPasswordManager()
 	logMailer := mailer.NewLogSender(logger)
+	queueMailer := mailer.NewQueueSender(emailJobRepo, cfg.EmailMaxAttempts)
 	metrics := observability.NewMetrics(db)
 	auditLogger := observability.NewAuditLogger(logger, metrics, auditLogRepo)
 	errorReporter := observability.NewErrorReporter(logger, metrics, errorEventRepo)
@@ -74,7 +78,7 @@ func New(cfg config.Config, logger *slog.Logger) (*Application, error) {
 		actionTokenRepo,
 		jwtManager,
 		passwordManager,
-		logMailer,
+		queueMailer,
 		auditLogger,
 		cfg.AppBaseURL,
 		cfg.MailFrom,
@@ -91,6 +95,27 @@ func New(cfg config.Config, logger *slog.Logger) (*Application, error) {
 	favoritesService := usecase.NewFavoritesService(favoriteRepo, productRepo, eventRepo)
 	placesService := usecase.NewPlacesService(placeRepo)
 	recommendationsService := usecase.NewRecommendationsService(recommendationRepo)
+	jobRunner := jobs.NewRunner(
+		logger,
+		jobs.Config{
+			Enabled:                       cfg.JobsEnabled,
+			CleanupInterval:               cfg.CleanupInterval,
+			EmailPollInterval:             cfg.EmailPollInterval,
+			EmailLockTTL:                  cfg.EmailLockTTL,
+			EmailBatchSize:                cfg.EmailBatchSize,
+			EmailRetention:                cfg.EmailRetention,
+			StatsRefreshInterval:          cfg.StatsRefreshInterval,
+			RecommendationRefreshInterval: cfg.RecommendationRefreshInterval,
+			RecommendationActivityWindow:  cfg.RecommendationActivityWindow,
+			RecommendationUserBatchSize:   cfg.RecommendationUserBatchSize,
+			RecommendationLimit:           cfg.RecommendationLimit,
+		},
+		sessionRepo,
+		actionTokenRepo,
+		emailJobRepo,
+		logMailer,
+		recommendationsService,
+	)
 
 	router := httpapi.NewRouter(httpapi.Dependencies{
 		Logger:                 logger,
@@ -123,11 +148,19 @@ func New(cfg config.Config, logger *slog.Logger) (*Application, error) {
 		logger: logger,
 		db:     db,
 		server: server,
+		jobs:   jobRunner,
 	}, nil
 }
 
 // Run starts HTTP server and blocks until context cancellation or server crash.
 func (a *Application) Run(ctx context.Context) error {
+	runCtx, cancelRun := context.WithCancel(ctx)
+	defer cancelRun()
+
+	if a.jobs != nil {
+		a.jobs.Start(runCtx)
+	}
+
 	errCh := make(chan error, 1)
 	go func() {
 		a.logger.Info("starting api server", "addr", a.server.Addr, "env", a.cfg.Env)
@@ -139,7 +172,7 @@ func (a *Application) Run(ctx context.Context) error {
 	}()
 
 	select {
-	case <-ctx.Done():
+	case <-runCtx.Done():
 		shutdownCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 		defer cancel()
 		if err := a.server.Shutdown(shutdownCtx); err != nil {
@@ -148,6 +181,7 @@ func (a *Application) Run(ctx context.Context) error {
 		a.db.Close()
 		return nil
 	case err := <-errCh:
+		cancelRun()
 		a.db.Close()
 		if err != nil {
 			return fmt.Errorf("listen and serve: %w", err)
