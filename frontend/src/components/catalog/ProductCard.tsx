@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 
 import type { Product } from '@/types/domain'
@@ -10,92 +10,75 @@ interface ProductCardProps {
   product: Product
 }
 
-const CATEGORY_ICONS: Record<string, string> = {
-  electronics: '??',
-  phones: '??',
-  computers: '??',
-  laptops: '??',
-  tablets: '??',
-  accessories: '?',
-  clothing: '??',
-  shoes: '??',
-  books: '??',
-  home: '??',
-  furniture: '???',
-  sports: '?',
-  toys: '??',
-  beauty: '??',
-  food: '??',
-  default: '??',
-}
+const FALLBACK_IMAGE = 'https://placehold.co/1200x900/f3f4f6/6b7280?text=No+Image'
 
-const getCategoryIcon = (categoryName: string): string => {
-  const key = categoryName?.toLowerCase() || 'default'
-  return CATEGORY_ICONS[key] || CATEGORY_ICONS.default
-}
-
-const StarRating = ({ rating }: { rating: number }) => {
-  const safeRating = Number.isFinite(rating) ? rating : 0
-  const fullStars = Math.floor(safeRating)
-  const hasHalfStar = safeRating % 1 >= 0.5
-  const emptyStars = 5 - fullStars - (hasHalfStar ? 1 : 0)
-
-  return (
-    <div className={styles.stars}>
-      {[...Array(fullStars)].map((_, i) => (
-        <span key={`full-${i}`} className={styles.starFilled}>?</span>
-      ))}
-      {hasHalfStar && <span className={styles.starHalf}>?</span>}
-      {[...Array(emptyStars)].map((_, i) => (
-        <span key={`empty-${i}`} className={styles.starEmpty}>?</span>
-      ))}
-      <span className={styles.ratingValue}>{safeRating.toFixed(1)}</span>
-    </div>
-  )
+const formatSpecValue = (value: string | number | boolean | null) => {
+  if (value === null) {
+    return '-'
+  }
+  if (typeof value === 'boolean') {
+    return value ? 'Yes' : 'No'
+  }
+  return String(value)
 }
 
 export const ProductCard = ({ product }: ProductCardProps) => {
-  const image = product.images[0] ?? 'https://placehold.co/320x240?text=No+Image'
   const [imageLoaded, setImageLoaded] = useState(false)
-  const [isHovered, setIsHovered] = useState(false)
+  const image = product.imageUrl ?? product.images[0] ?? FALLBACK_IMAGE
 
-  const categoryIcon = getCategoryIcon(product.categoryName || '')
+  const specPreview = useMemo(() => {
+    return Object.entries(product.specs ?? {}).slice(0, 2)
+  }, [product.specs])
 
   return (
-    <article
-      className={styles.card}
-      onMouseEnter={() => setIsHovered(true)}
-      onMouseLeave={() => setIsHovered(false)}
-    >
+    <article className={styles.card}>
       <Link to={`/products/${product.id}`} className={styles.imageWrap}>
-        <div className={`${styles.skeleton} ${imageLoaded ? styles.hidden : ''}`} />
+        {!imageLoaded ? <div className={styles.skeleton} /> : null}
         <img
           src={image}
           alt={product.title}
           loading="lazy"
-          className={imageLoaded ? styles.loaded : ''}
+          className={imageLoaded ? styles.imageLoaded : styles.image}
           onLoad={() => setImageLoaded(true)}
         />
-
-        <div className={`${styles.overlay} ${isHovered ? styles.visible : ''}`}>
-          <span className={styles.addToCartBtn}>Open details</span>
-        </div>
+        <span
+          className={`${styles.stockBadge} ${
+            product.stock && product.stock > 0 ? styles.stockBadgeActive : styles.stockBadgeEmpty
+          }`}
+        >
+          {product.stock && product.stock > 0 ? `${product.stock} in stock` : 'Out of stock'}
+        </span>
       </Link>
 
       <div className={styles.body}>
-        <div className={styles.categoryRow}>
-          <span className={styles.categoryIcon}>{categoryIcon}</span>
-          <span className={styles.category}>{product.categoryName || 'Category'}</span>
+        <div className={styles.metaRow}>
+          <span className={styles.category}>{product.categoryName || 'Catalog'}</span>
+          {product.brand ? <span className={styles.brand}>{product.brand}</span> : null}
         </div>
 
-        <h3>
+        <h3 className={styles.title}>
           <Link to={`/products/${product.id}`}>{product.title}</Link>
         </h3>
 
-        <StarRating rating={product.rating} />
+        {specPreview.length > 0 ? (
+          <ul className={styles.specList}>
+            {specPreview.map(([key, value]) => (
+              <li key={key}>
+                <span>{key.replaceAll('_', ' ')}</span>
+                <strong>{formatSpecValue(value)}</strong>
+              </li>
+            ))}
+          </ul>
+        ) : (
+          <p className={styles.description}>{product.description || 'Open the product to see details.'}</p>
+        )}
 
-        <div className={styles.priceRow}>
-          <span className={styles.price}>{formatCurrency(product.price, product.currency)}</span>
+        <div className={styles.footerRow}>
+          <div className={styles.priceBlock}>
+            <strong className={styles.price}>{formatCurrency(product.price, product.currency)}</strong>
+            {product.unit ? <span className={styles.unit}>per {product.unit}</span> : null}
+          </div>
+          <span className={styles.cta}>Open</span>
         </div>
       </div>
     </article>

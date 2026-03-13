@@ -6,6 +6,7 @@ import type {
   Order,
   Place,
   Product,
+  ProductSpecs,
   Review,
   User,
   UserRole,
@@ -17,6 +18,28 @@ const pickString = (value: unknown, fallback = '') => (typeof value === 'string'
 
 const pickNumber = (value: unknown, fallback = 0) =>
   typeof value === 'number' && Number.isFinite(value) ? value : fallback
+
+const asStringArray = (value: unknown): string[] =>
+  Array.isArray(value) ? value.filter((item): item is string => typeof item === 'string' && item.length > 0) : []
+
+const normalizeSpecs = (value: unknown): ProductSpecs => {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) {
+    return {}
+  }
+
+  const result: ProductSpecs = {}
+  for (const [key, item] of Object.entries(value as Record<string, unknown>)) {
+    if (
+      typeof item === 'string' ||
+      typeof item === 'number' ||
+      typeof item === 'boolean' ||
+      item === null
+    ) {
+      result[key] = item
+    }
+  }
+  return result
+}
 
 const ensureRole = (value: unknown, hasIdentity = false): UserRole => {
   if (value === 'customer' || value === 'seller' || value === 'admin') {
@@ -76,19 +99,26 @@ export const normalizeCategory = (input: unknown): Category => {
 
 export const normalizeProduct = (input: unknown): Product => {
   const source = asRecord(input)
-  const rawImages = Array.isArray(source.images) ? source.images : [source.image]
-  const images = rawImages.filter((image): image is string => typeof image === 'string' && image.length > 0)
+  const imageUrl = pickString(source.image_url, pickString(source.imageUrl, pickString(source.image)))
+  const gallery = asStringArray(source.images).length > 0 ? asStringArray(source.images) : asStringArray(source.gallery)
+  const images = Array.from(new Set([imageUrl, ...gallery].filter((image) => image.length > 0)))
+  const specs = normalizeSpecs(source.specs)
 
   return {
     id: pickString(source.id, pickString(source._id, createId())),
     title: pickString(source.title, pickString(source.name, 'Product')),
     name: pickString(source.name, pickString(source.title, 'Product')),
     slug: pickString(source.slug),
+    sku: pickString(source.sku),
     description: pickString(source.description),
     price: pickNumber(source.price),
     currency: pickString(source.currency, 'RUB'),
     rating: pickNumber(source.rating, 0),
+    imageUrl: imageUrl || images[0],
     images,
+    brand: pickString(source.brand),
+    unit: pickString(source.unit),
+    specs,
     categoryId: pickString(source.category_id, pickString(source.categoryId, pickString(source.category, ''))),
     categoryName: pickString(source.categoryName, pickString(source.category_name)),
     sellerId: pickString(source.sellerId),
@@ -137,7 +167,7 @@ export const normalizeCartItem = (input: unknown): CartItem => {
     title: pickString(source.title, pickString(source.product_name, pickString(source.name, pickString(source.productTitle, 'Product')))),
     slug: pickString(source.slug),
     sku: pickString(source.sku),
-    imageUrl: pickString(source.imageUrl, pickString(source.image)),
+    imageUrl: pickString(source.image_url, pickString(source.imageUrl, pickString(source.image))),
     price: pickNumber(source.unit_price, pickNumber(source.price)),
     quantity: pickNumber(source.quantity, 1),
     lineTotal,

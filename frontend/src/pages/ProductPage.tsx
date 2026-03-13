@@ -12,6 +12,20 @@ import { formatCurrency } from '@/utils/format'
 
 import styles from '@/pages/ProductPage.module.scss'
 
+const FALLBACK_IMAGE = 'https://placehold.co/1200x900/f3f4f6/6b7280?text=No+Image'
+
+const formatSpecLabel = (key: string) => key.replaceAll('_', ' ')
+
+const formatSpecValue = (value: string | number | boolean | null) => {
+  if (value === null) {
+    return '-'
+  }
+  if (typeof value === 'boolean') {
+    return value ? 'Yes' : 'No'
+  }
+  return String(value)
+}
+
 export const ProductPage = () => {
   const { id = '' } = useParams()
   const navigate = useNavigate()
@@ -26,8 +40,8 @@ export const ProductPage = () => {
   const cartMutationStatus = useAppSelector((state) => state.cart.mutationStatus)
   const recommendations = useAppSelector((state) => state.recommendations.items)
 
-  const [selectedImage, setSelectedImage] = useState<string>('')
-  const [quantity, setQuantity] = useState(1)
+  const [selectedImages, setSelectedImages] = useState<Record<string, string>>({})
+  const [quantities, setQuantities] = useState<Record<string, number>>({})
 
   useEffect(() => {
     if (!id) {
@@ -47,11 +61,12 @@ export const ProductPage = () => {
     [favoriteItems, id],
   )
 
-  const gallery = product?.images.length
-    ? product.images
-    : ['https://placehold.co/500x400?text=No+Image']
+  const gallery = product?.images.length ? product.images : [FALLBACK_IMAGE]
+  const selectedImage = product ? selectedImages[product.id] ?? '' : ''
   const activeImage = selectedImage && gallery.includes(selectedImage) ? selectedImage : gallery[0]
+  const quantity = product ? quantities[product.id] ?? 1 : 1
   const safeQuantity = Math.min(quantity, Math.max(product?.stock || 1, 1))
+  const specEntries = Object.entries(product?.specs ?? {})
 
   const handleToggleFavorite = async () => {
     if (!product) {
@@ -109,32 +124,93 @@ export const ProductPage = () => {
                 type="button"
                 key={`${image}-${index}`}
                 className={image === activeImage ? styles.thumbActive : styles.thumb}
-                onClick={() => setSelectedImage(image)}
+                onClick={() =>
+                  setSelectedImages((current) => ({
+                    ...current,
+                    [product.id]: image,
+                  }))
+                }
               >
-                <img src={image} alt={`${product.title} preview ${index + 1}`} />
+                <img src={image} alt={`${product.title} view ${index + 1}`} />
               </button>
             ))}
           </div>
         </div>
 
         <div className={styles.info}>
-          <h1 className={styles.title}>{product.title}</h1>
-          <div className={styles.priceBlock}>
-            <p className={styles.price}>{formatCurrency(product.price, product.currency)}</p>
+          <div className={styles.header}>
+            <div className={styles.badges}>
+              {product.categoryName ? <span className={styles.badge}>{product.categoryName}</span> : null}
+              {product.brand ? <span className={styles.badgeAlt}>{product.brand}</span> : null}
+            </div>
+            <h1 className={styles.title}>{product.title}</h1>
+            <p className={styles.subtitle}>
+              SKU: {product.sku || product.id.slice(0, 8)}
+              {product.unit ? ` | Sold per ${product.unit}` : ''}
+            </p>
           </div>
 
-          <p className={styles.description}>{product.description || 'No description'}</p>
+          <div className={styles.priceBlock}>
+            <p className={styles.price}>{formatCurrency(product.price, product.currency)}</p>
+            {product.unit ? <span className={styles.unit}>per {product.unit}</span> : null}
+          </div>
+
+          <p className={styles.description}>{product.description || 'No description provided for this product yet.'}</p>
 
           <div className={`${styles.stock} ${product.stock && product.stock > 0 ? styles.inStock : styles.outOfStock}`}>
             <span>{product.stock && product.stock > 0 ? `In stock: ${product.stock}` : 'Out of stock'}</span>
           </div>
+
+          <div className={styles.metaGrid}>
+            {product.brand ? (
+              <div className={styles.metaCard}>
+                <span>Brand</span>
+                <strong>{product.brand}</strong>
+              </div>
+            ) : null}
+            {product.unit ? (
+              <div className={styles.metaCard}>
+                <span>Unit</span>
+                <strong>{product.unit}</strong>
+              </div>
+            ) : null}
+            <div className={styles.metaCard}>
+              <span>SKU</span>
+              <strong>{product.sku || product.id.slice(0, 8)}</strong>
+            </div>
+            {product.categoryName ? (
+              <div className={styles.metaCard}>
+                <span>Category</span>
+                <strong>{product.categoryName}</strong>
+              </div>
+            ) : null}
+          </div>
+
+          {specEntries.length > 0 ? (
+            <section className={styles.specs}>
+              <h2>Specifications</h2>
+              <dl className={styles.specList}>
+                {specEntries.map(([key, value]) => (
+                  <div key={key}>
+                    <dt>{formatSpecLabel(key)}</dt>
+                    <dd>{formatSpecValue(value as string | number | boolean | null)}</dd>
+                  </div>
+                ))}
+              </dl>
+            </section>
+          ) : null}
 
           <div className={styles.quantity}>
             <span className={styles.quantityLabel}>Quantity</span>
             <div className={styles.quantityControls}>
               <button
                 type="button"
-                onClick={() => setQuantity((current) => Math.max(1, current - 1))}
+                onClick={() =>
+                  setQuantities((current) => ({
+                    ...current,
+                    [product.id]: Math.max(1, safeQuantity - 1),
+                  }))
+                }
                 disabled={safeQuantity <= 1}
               >
                 -
@@ -142,7 +218,12 @@ export const ProductPage = () => {
               <span>{safeQuantity}</span>
               <button
                 type="button"
-                onClick={() => setQuantity((current) => Math.min(product.stock || 1, current + 1))}
+                onClick={() =>
+                  setQuantities((current) => ({
+                    ...current,
+                    [product.id]: Math.min(product.stock || 1, safeQuantity + 1),
+                  }))
+                }
                 disabled={!product.stock || safeQuantity >= product.stock}
               >
                 +
@@ -169,23 +250,27 @@ export const ProductPage = () => {
               {isFavorite ? 'Remove from favorites' : 'Add to favorites'}
             </button>
           </div>
-
         </div>
       </section>
 
       {auth.isAuthenticated && recommendations.length > 0 ? (
-        <section className={styles.reviews}>
-          <div className={styles.reviewsHeader}>
+        <section className={styles.recommendations}>
+          <div className={styles.recommendationsHeader}>
             <h2>Recommended for you</h2>
+            <p>Products from related categories and your recent activity.</p>
           </div>
-          <div className={styles.reviewList}>
+          <div className={styles.recommendationList}>
             {recommendations
               .filter((item) => item.id !== product.id)
               .slice(0, 6)
               .map((item) => (
-                <article key={item.id} className={styles.reviewItem}>
-                  <h3>{item.title}</h3>
-                  <p>{formatCurrency(item.price, item.currency)}</p>
+                <article key={item.id} className={styles.recommendationCard}>
+                  <img src={item.imageUrl ?? item.images[0] ?? FALLBACK_IMAGE} alt={item.title} />
+                  <div>
+                    <h3>{item.title}</h3>
+                    <p>{item.brand || item.categoryName || 'Catalog item'}</p>
+                    <strong>{formatCurrency(item.price, item.currency)}</strong>
+                  </div>
                   <Link to={`/products/${item.id}`}>Open</Link>
                 </article>
               ))}

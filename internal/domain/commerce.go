@@ -12,6 +12,7 @@ type CartItem struct {
 	Name      string    `json:"name"`
 	Slug      string    `json:"slug"`
 	SKU       string    `json:"sku"`
+	ImageURL  string    `json:"image_url,omitempty"`
 	Price     float64   `json:"unit_price"`
 	Quantity  int       `json:"quantity"`
 	LineTotal float64   `json:"line_total"`

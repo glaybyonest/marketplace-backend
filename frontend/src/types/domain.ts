@@ -23,16 +23,24 @@ export interface Category {
   children?: Category[]
 }
 
+export type ProductSpecValue = string | number | boolean | null
+export type ProductSpecs = Record<string, ProductSpecValue>
+
 export interface Product {
   id: string
   title: string
   name?: string
   slug?: string
+  sku?: string
   description: string
   price: number
   currency?: string
   rating: number
+  imageUrl?: string
   images: string[]
+  brand?: string
+  unit?: string
+  specs?: ProductSpecs
   categoryId: string
   categoryName?: string
   sellerId?: string

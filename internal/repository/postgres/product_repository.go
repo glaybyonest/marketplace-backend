@@ -2,6 +2,7 @@ package postgres
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"strings"
 
@@ -15,6 +16,27 @@ import (
 type ProductRepository struct {
 	db *pgxpool.Pool
 }
+
+const productSelectColumns = `
+		p.id,
+		p.category_id,
+		c.name,
+		p.name,
+		p.slug,
+		COALESCE(p.description, ''),
+		p.price::double precision,
+		p.currency,
+		p.sku,
+		COALESCE(p.image_url, ''),
+		COALESCE(p.gallery, '[]'::jsonb),
+		COALESCE(p.brand, ''),
+		COALESCE(p.unit, ''),
+		COALESCE(p.specs, '{}'::jsonb),
+		p.stock_qty,
+		p.is_active,
+		p.created_at,
+		p.updated_at
+`
 
 func NewProductRepository(db *pgxpool.Pool) *ProductRepository {
 	return &ProductRepository{db: db}
@@ -57,9 +79,9 @@ func (r *ProductRepository) List(ctx context.Context, filter domain.ProductFilte
 	offsetPos := len(args)
 
 	querySQL := `
-		SELECT p.id, p.category_id, p.name, p.slug, COALESCE(p.description, ''), p.price::double precision,
-		       p.currency, p.sku, p.stock_qty, p.is_active, p.created_at, p.updated_at
+		SELECT ` + productSelectColumns + `
 		FROM products p
+		INNER JOIN categories c ON c.id = p.category_id
 		WHERE ` + condition + `
 		ORDER BY ` + orderBy + `
 		LIMIT $` + fmt.Sprint(limitPos) + ` OFFSET $` + fmt.Sprint(offsetPos)
@@ -92,9 +114,9 @@ func (r *ProductRepository) List(ctx context.Context, filter domain.ProductFilte
 
 func (r *ProductRepository) GetByID(ctx context.Context, id uuid.UUID) (domain.Product, error) {
 	row := r.db.QueryRow(ctx, `
-		SELECT id, category_id, name, slug, COALESCE(description, ''), price::double precision,
-		       currency, sku, stock_qty, is_active, created_at, updated_at
-		FROM products
+		SELECT `+productSelectColumns+`
+		FROM products p
+		INNER JOIN categories c ON c.id = p.category_id
 		WHERE id = $1 AND is_active = TRUE
 	`, id)
 
@@ -107,9 +129,9 @@ func (r *ProductRepository) GetByID(ctx context.Context, id uuid.UUID) (domain.P
 
 func (r *ProductRepository) GetBySlug(ctx context.Context, slug string) (domain.Product, error) {
 	row := r.db.QueryRow(ctx, `
-		SELECT id, category_id, name, slug, COALESCE(description, ''), price::double precision,
-		       currency, sku, stock_qty, is_active, created_at, updated_at
-		FROM products
+		SELECT `+productSelectColumns+`
+		FROM products p
+		INNER JOIN categories c ON c.id = p.category_id
 		WHERE slug = $1 AND is_active = TRUE
 	`, slug)
 
@@ -121,18 +143,88 @@ func (r *ProductRepository) GetBySlug(ctx context.Context, slug string) (domain.
 }
 
 func scanProduct(row pgx.Row, product *domain.Product) error {
-	return row.Scan(
+	var galleryRaw []byte
+	var specsRaw []byte
+
+	err := row.Scan(
 		&product.ID,
 		&product.CategoryID,
+		&product.CategoryName,
 		&product.Name,
 		&product.Slug,
 		&product.Description,
 		&product.Price,
 		&product.Currency,
 		&product.SKU,
+		&product.ImageURL,
+		&galleryRaw,
+		&product.Brand,
+		&product.Unit,
+		&specsRaw,
 		&product.StockQty,
 		&product.IsActive,
 		&product.CreatedAt,
 		&product.UpdatedAt,
 	)
+	if err != nil {
+		return err
+	}
+
+	images, err := decodeProductImages(product.ImageURL, galleryRaw)
+	if err != nil {
+		return err
+	}
+	product.Images = images
+
+	specs, err := decodeProductSpecs(specsRaw)
+	if err != nil {
+		return err
+	}
+	product.Specs = specs
+
+	return nil
+}
+
+func decodeProductImages(imageURL string, galleryRaw []byte) ([]string, error) {
+	images := make([]string, 0, 4)
+	seen := make(map[string]struct{}, 4)
+
+	appendImage := func(value string) {
+		value = strings.TrimSpace(value)
+		if value == "" {
+			return
+		}
+		if _, exists := seen[value]; exists {
+			return
+		}
+		seen[value] = struct{}{}
+		images = append(images, value)
+	}
+
+	appendImage(imageURL)
+
+	if len(galleryRaw) == 0 {
+		return images, nil
+	}
+
+	var gallery []string
+	if err := json.Unmarshal(galleryRaw, &gallery); err != nil {
+		return nil, fmt.Errorf("decode product gallery: %w", err)
+	}
+	for _, image := range gallery {
+		appendImage(image)
+	}
+	return images, nil
+}
+
+func decodeProductSpecs(specsRaw []byte) (map[string]any, error) {
+	if len(specsRaw) == 0 {
+		return map[string]any{}, nil
+	}
+
+	specs := make(map[string]any)
+	if err := json.Unmarshal(specsRaw, &specs); err != nil {
+		return nil, fmt.Errorf("decode product specs: %w", err)
+	}
+	return specs, nil
 }

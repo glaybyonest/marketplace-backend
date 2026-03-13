@@ -86,14 +86,14 @@ func (r *RecommendationRepository) ListByCategories(
 	}
 
 	rows, err := r.db.Query(ctx, `
-		SELECT p.id, p.category_id, p.name, p.slug, COALESCE(p.description, ''), p.price::double precision,
-		       p.currency, p.sku, p.stock_qty, p.is_active, p.created_at, p.updated_at
+		SELECT `+productSelectColumns+`
 		FROM products p
+		INNER JOIN categories c ON c.id = p.category_id
 		LEFT JOIN user_product_events e ON e.product_id = p.id
 		WHERE p.is_active = TRUE
 		  AND p.category_id = ANY($1)
 		  AND ($2::uuid[] IS NULL OR NOT (p.id = ANY($2)))
-		GROUP BY p.id
+		GROUP BY p.id, c.name
 		ORDER BY COALESCE(SUM(CASE
 			WHEN e.event_type = 'favorite_add' THEN 3
 			WHEN e.event_type = 'view' THEN 1
@@ -127,13 +127,13 @@ func (r *RecommendationRepository) ListPopular(ctx context.Context, excludeProdu
 	}
 
 	rows, err := r.db.Query(ctx, `
-		SELECT p.id, p.category_id, p.name, p.slug, COALESCE(p.description, ''), p.price::double precision,
-		       p.currency, p.sku, p.stock_qty, p.is_active, p.created_at, p.updated_at
+		SELECT `+productSelectColumns+`
 		FROM products p
+		INNER JOIN categories c ON c.id = p.category_id
 		LEFT JOIN user_product_events e ON e.product_id = p.id
 		WHERE p.is_active = TRUE
 		  AND ($1::uuid[] IS NULL OR NOT (p.id = ANY($1)))
-		GROUP BY p.id
+		GROUP BY p.id, c.name
 		ORDER BY COALESCE(SUM(CASE
 			WHEN e.event_type = 'favorite_add' THEN 3
 			WHEN e.event_type = 'view' THEN 1

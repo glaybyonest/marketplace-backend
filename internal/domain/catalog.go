@@ -29,18 +29,24 @@ type CategoryNode struct {
 
 // Product represents an item in the catalog.
 type Product struct {
-	ID          uuid.UUID `json:"id"`
-	CategoryID  uuid.UUID `json:"category_id"`
-	Name        string    `json:"name"`
-	Slug        string    `json:"slug"`
-	Description string    `json:"description,omitempty"`
-	Price       float64   `json:"price"`
-	Currency    string    `json:"currency"`
-	SKU         string    `json:"sku"`
-	StockQty    int       `json:"stock_qty"`
-	IsActive    bool      `json:"is_active"`
-	CreatedAt   time.Time `json:"created_at"`
-	UpdatedAt   time.Time `json:"updated_at"`
+	ID           uuid.UUID      `json:"id"`
+	CategoryID   uuid.UUID      `json:"category_id"`
+	CategoryName string         `json:"category_name,omitempty"`
+	Name         string         `json:"name"`
+	Slug         string         `json:"slug"`
+	Description  string         `json:"description,omitempty"`
+	Price        float64        `json:"price"`
+	Currency     string         `json:"currency"`
+	SKU          string         `json:"sku"`
+	ImageURL     string         `json:"image_url,omitempty"`
+	Images       []string       `json:"images"`
+	Brand        string         `json:"brand,omitempty"`
+	Unit         string         `json:"unit,omitempty"`
+	Specs        map[string]any `json:"specs,omitempty"`
+	StockQty     int            `json:"stock_qty"`
+	IsActive     bool           `json:"is_active"`
+	CreatedAt    time.Time      `json:"created_at"`
+	UpdatedAt    time.Time      `json:"updated_at"`
 }
 
 // ProductFilter describes catalog list query.

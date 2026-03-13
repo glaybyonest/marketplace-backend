@@ -53,10 +53,10 @@ func (r *FavoriteRepository) List(ctx context.Context, userID uuid.UUID, page, l
 
 	offset := (page - 1) * limit
 	rows, err := r.db.Query(ctx, `
-		SELECT p.id, p.category_id, p.name, p.slug, COALESCE(p.description, ''), p.price::double precision,
-		       p.currency, p.sku, p.stock_qty, p.is_active, p.created_at, p.updated_at
+		SELECT `+productSelectColumns+`
 		FROM favorites f
 		INNER JOIN products p ON p.id = f.product_id
+		INNER JOIN categories c ON c.id = p.category_id
 		WHERE f.user_id = $1 AND p.is_active = TRUE
 		ORDER BY f.created_at DESC
 		LIMIT $2 OFFSET $3

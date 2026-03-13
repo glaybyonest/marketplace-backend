@@ -14,21 +14,19 @@ import { filtersToSearchParams, searchParamsToFilters } from '@/utils/query'
 import styles from '@/pages/HomePage.module.scss'
 
 const CATEGORY_ICONS: Record<string, string> = {
-  electronics: '??',
-  clothing: '??',
-  books: '??',
-  home: '??',
-  sports: '?',
-  toys: '??',
-  beauty: '??',
-  automotive: '??',
-  grocery: '??',
-  jewelry: '??',
+  stroymaterialy: 'SM',
+  cement: 'CM',
+  pilomaterialy: 'WD',
+  oak: 'OK',
+  aspen: 'AS',
+  birch: 'BR',
+  krepezh: 'FX',
+  nails: 'NL',
 }
 
 const getCategoryIcon = (slug?: string): string => {
-  if (!slug) return '??'
-  return CATEGORY_ICONS[slug] || '??'
+  if (!slug) return 'CT'
+  return CATEGORY_ICONS[slug] || 'CT'
 }
 
 export const HomePage = () => {
@@ -145,7 +143,7 @@ export const HomePage = () => {
               className={`${styles.categoryCard} ${!filters.category_id ? styles.categoryCardActive : ''}`}
               onClick={() => handleCategoryClick(undefined)}
             >
-              <span className={styles.categoryIcon}>???</span>
+              <span className={styles.categoryIcon}>ALL</span>
               <span className={styles.categoryName}>All products</span>
             </div>
             {categories.map((category) => (

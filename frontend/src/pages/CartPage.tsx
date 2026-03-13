@@ -14,6 +14,8 @@ import { formatCurrency } from '@/utils/format'
 
 import styles from '@/pages/CartPage.module.scss'
 
+const FALLBACK_IMAGE = 'https://placehold.co/1200x900/f3f4f6/6b7280?text=No+Image'
+
 export const CartPage = () => {
   const dispatch = useAppDispatch()
   const { items, total, currency, totalItems, status, mutationStatus, error } = useAppSelector((state) => state.cart)
@@ -67,13 +69,19 @@ export const CartPage = () => {
           <section className={styles.list}>
             {items.map((item) => (
               <article key={item.id} className={styles.item}>
+                <img
+                  src={item.imageUrl ?? FALLBACK_IMAGE}
+                  alt={item.title}
+                  className={styles.image}
+                />
+
                 <div className={styles.itemMain}>
                   <Link to={`/products/${item.productId}`} className={styles.itemTitle}>
                     {item.title}
                   </Link>
                   <p className={styles.meta}>
                     {item.sku ? `SKU: ${item.sku}` : 'Cart item'}
-                    {item.stock !== undefined ? ` · Stock: ${item.stock}` : ''}
+                    {item.stock !== undefined ? ` | Stock: ${item.stock}` : ''}
                   </p>
                   <p className={styles.price}>{formatCurrency(item.price, item.currency ?? currency)}</p>
                 </div>

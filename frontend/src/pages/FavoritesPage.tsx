@@ -9,6 +9,8 @@ import { formatCurrency } from '@/utils/format'
 
 import styles from '@/pages/FavoritesPage.module.scss'
 
+const FALLBACK_IMAGE = 'https://placehold.co/1200x900/f3f4f6/6b7280?text=No+Image'
+
 export const FavoritesPage = () => {
   const dispatch = useAppDispatch()
   const { items, status, mutationStatus, error } = useAppSelector((state) => state.favorites)
@@ -36,9 +38,17 @@ export const FavoritesPage = () => {
           <section className={styles.list}>
             {items.map((item) => (
               <article key={item.id} className={styles.item}>
-                <div>
-                  <h3>{item.title}</h3>
-                  <p>{formatCurrency(item.price, item.currency)}</p>
+                <img
+                  src={item.imageUrl ?? item.images[0] ?? FALLBACK_IMAGE}
+                  alt={item.title}
+                  className={styles.image}
+                />
+                <div className={styles.itemInfo}>
+                  <h3>
+                    <Link to={`/products/${item.id}`}>{item.title}</Link>
+                  </h3>
+                  <p>{item.brand || item.categoryName || 'Catalog item'}</p>
+                  <strong>{formatCurrency(item.price, item.currency)}</strong>
                 </div>
                 <button type="button" onClick={() => handleDelete(item.id)} disabled={mutationStatus === 'loading'}>
                   Remove
