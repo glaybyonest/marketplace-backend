@@ -64,16 +64,6 @@ func (m *jobSenderMock) Send(ctx context.Context, message mailer.Message) error 
 	return m.send(ctx, message)
 }
 
-type jobRecommendationMock struct{}
-
-func (m *jobRecommendationMock) RefreshPopularityStats(ctx context.Context) (int64, error) {
-	return 0, nil
-}
-
-func (m *jobRecommendationMock) RefreshCache(ctx context.Context, activeSince time.Time, userLimit, recommendationLimit int) (int, error) {
-	return 0, nil
-}
-
 func TestRunEmailDispatch(t *testing.T) {
 	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
 	job1 := mailer.Job{ID: uuid.New(), To: "a@example.com", From: "noreply@example.com", Subject: "ok", Text: "body", Attempts: 1, MaxAttempts: 3}
