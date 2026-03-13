@@ -11,8 +11,17 @@ dist/
 *.dylib
 
 # Test and coverage artifacts
+coverage
 coverage.out
 *.coverprofile
+
+# Local reports / diagrams
+docs/
+*.drawio
+*.mmd
+*_report*.docx
+_gen_report.ps1
+_generate_backend_report.ps1
 
 # IDE / OS
 .vscode/

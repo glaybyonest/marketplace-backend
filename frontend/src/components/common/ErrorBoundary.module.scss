@@ -1,0 +1,12 @@
+.fallback {
+  min-height: 100vh;
+  display: grid;
+  place-items: center;
+  text-align: center;
+  padding: 2rem;
+  color: var(--color-text-primary);
+}
+
+.fallback h2 {
+  margin-bottom: 0.75rem;
+}

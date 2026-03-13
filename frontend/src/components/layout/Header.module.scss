@@ -1,0 +1,278 @@
+.header {
+  position: sticky;
+  top: 0;
+  z-index: var(--z-sticky);
+  backdrop-filter: blur(12px);
+  background: linear-gradient(135deg, var(--color-surface) 0%, rgba(255, 255, 255, 0.92) 100%);
+  border-bottom: 1px solid var(--color-border);
+  box-shadow: 0 1px 3px 0 rgb(0 0 0 / 0.08), 0 1px 2px -1px rgb(0 0 0 / 0.08);
+}
+
+.inner {
+  max-width: var(--content-width);
+  margin: 0 auto;
+  padding: 0.875rem 1.25rem;
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  gap: 1.5rem;
+  align-items: center;
+}
+
+.brand {
+  font-family: var(--font-family-display);
+  font-size: 1.375rem;
+  font-weight: 800;
+  background: linear-gradient(135deg, var(--color-primary) 0%, #7c3aed 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  text-decoration: none;
+  letter-spacing: -0.02em;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  transition: all var(--transition-base);
+
+  &::before {
+    content: '';
+    display: inline-block;
+    width: 32px;
+    height: 32px;
+    background: linear-gradient(135deg, var(--color-primary) 0%, #7c3aed 100%);
+    border-radius: var(--radius-md);
+    box-shadow: 0 2px 8px rgba(37, 99, 235, 0.3);
+  }
+
+  &:hover {
+    transform: scale(1.02);
+    filter: brightness(1.1);
+  }
+}
+
+.nav {
+  display: flex;
+  gap: 0.375rem;
+  align-items: center;
+}
+
+.navLink {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.625rem 1rem;
+  border-radius: var(--radius-full);
+  color: var(--color-text-secondary);
+  text-decoration: none;
+  font-size: 0.9rem;
+  font-weight: 600;
+  transition: all var(--transition-base);
+  overflow: hidden;
+
+  &::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(135deg, var(--color-primary-light) 0%, rgba(124, 58, 237, 0.1) 100%);
+    opacity: 0;
+    transition: opacity var(--transition-base);
+    border-radius: var(--radius-full);
+  }
+
+  &:hover {
+    color: var(--color-primary);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(37, 99, 235, 0.15);
+
+    &::before {
+      opacity: 1;
+    }
+  }
+}
+
+.active {
+  color: var(--color-primary);
+  background: linear-gradient(135deg, var(--color-primary-light) 0%, rgba(124, 58, 237, 0.08) 100%);
+
+  &::before {
+    opacity: 1;
+    background: linear-gradient(135deg, var(--color-primary-light) 0%, rgba(124, 58, 237, 0.12) 100%);
+  }
+}
+
+.cartWrapper {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+}
+
+.cartCount {
+  position: absolute;
+  top: -4px;
+  right: -4px;
+  min-width: 1.25rem;
+  height: 1.25rem;
+  padding: 0 0.25rem;
+  border-radius: var(--radius-full);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(135deg, var(--color-accent) 0%, var(--color-accent-hover) 100%);
+  color: #fff;
+  font-size: 0.7rem;
+  font-weight: 700;
+  box-shadow: 0 2px 8px rgba(249, 115, 22, 0.4);
+  animation: cartPulse 2s ease-in-out infinite;
+}
+
+@keyframes cartPulse {
+  0%, 100% {
+    transform: scale(1);
+    box-shadow: 0 2px 8px rgba(249, 115, 22, 0.4);
+  }
+  50% {
+    transform: scale(1.1);
+    box-shadow: 0 4px 12px rgba(249, 115, 22, 0.6);
+  }
+}
+
+.actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.625rem;
+}
+
+.authButton {
+  border: none;
+  cursor: pointer;
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--radius-full);
+  font-size: 0.875rem;
+  font-weight: 600;
+  padding: 0.625rem 1.25rem;
+  background: linear-gradient(135deg, var(--color-primary) 0%, #7c3aed 100%);
+  color: #fff;
+  box-shadow: 0 2px 8px rgba(37, 99, 235, 0.3);
+  transition: all var(--transition-base);
+
+  &:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(37, 99, 235, 0.4);
+  }
+
+  &:active {
+    transform: translateY(0);
+  }
+}
+
+.authButtonSecondary {
+  border: none;
+  cursor: pointer;
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--radius-full);
+  font-size: 0.875rem;
+  font-weight: 600;
+  padding: 0.625rem 1.25rem;
+  background: var(--color-surface);
+  color: var(--color-text-primary);
+  border: 1.5px solid var(--color-border);
+  transition: all var(--transition-base);
+
+  &:hover {
+    border-color: var(--color-primary);
+    color: var(--color-primary);
+    background: var(--color-primary-light);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(37, 99, 235, 0.1);
+  }
+}
+
+.mobileToggle {
+  display: none;
+  border: none;
+  border-radius: var(--radius-md);
+  background: linear-gradient(135deg, var(--color-surface) 0%, var(--color-background) 100%);
+  color: var(--color-text-primary);
+  padding: 0.625rem 0.875rem;
+  font-size: 0.875rem;
+  font-weight: 600;
+  box-shadow: var(--shadow-sm);
+  transition: all var(--transition-base);
+  cursor: pointer;
+
+  &:hover {
+    background: var(--color-primary-light);
+    color: var(--color-primary);
+    transform: translateY(-1px);
+    box-shadow: var(--shadow-md);
+  }
+
+  &[aria-expanded="true"] {
+    background: var(--color-primary);
+    color: #fff;
+  }
+}
+
+@media (max-width: 920px) {
+  .inner {
+    grid-template-columns: auto auto auto;
+    padding: 0.75rem 1rem;
+  }
+
+  .mobileToggle {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+
+  .nav {
+    position: absolute;
+    left: 1rem;
+    right: 1rem;
+    top: 100%;
+    margin-top: 0.5rem;
+    background: var(--color-surface);
+    border-radius: var(--radius-lg);
+    border: 1px solid var(--color-border);
+    box-shadow: var(--shadow-xl);
+    padding: 0.75rem;
+    flex-direction: column;
+    align-items: stretch;
+    opacity: 0;
+    visibility: hidden;
+    transform: translateY(-10px);
+    transition: all var(--transition-slow);
+  }
+
+  .navOpen {
+    opacity: 1;
+    visibility: visible;
+    transform: translateY(0);
+  }
+
+  .navLink {
+    justify-content: flex-start;
+    width: 100%;
+    padding: 0.875rem 1rem;
+  }
+
+  .cartWrapper {
+    margin-left: auto;
+  }
+
+  .actions {
+    gap: 0.5rem;
+  }
+
+  .authButton,
+  .authButtonSecondary {
+    padding: 0.5rem 0.875rem;
+    font-size: 0.8125rem;
+  }
+}

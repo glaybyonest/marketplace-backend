@@ -1,82 +1,150 @@
 # Marketplace Backend
 
-## Требования
+Production-style backend for a marketplace application with JWT auth, catalog, favorites, places, and personalized recommendations.
+
+## Tech Stack
 - Go 1.24+
-- Docker (Docker Desktop на Windows)
-- Make (опционально, но удобно)
+- PostgreSQL 16
+- Chi router
+- Pgx (database driver)
+- Goose migrations
+- Docker / Docker Compose
+- Frontend: React + Vite (in `frontend/`)
 
-## Установка
-1. Создайте файл `.env` на основе `.env.example` и задайте `JWT_SECRET` (минимум 32 символа).
-2. Для локального запуска (вне Docker) используйте `DATABASE_URL` с хостом `localhost`.
-3. Для запуска в Docker используйте `DATABASE_URL` с хостом `postgres` (как в `.env.example`).
+## Repository Layout
+- `cmd/api` - application entrypoint
+- `internal/app` - app wiring and startup
+- `internal/http` - handlers, middleware, DTO, response envelopes
+- `internal/usecase` - business logic
+- `internal/repository/postgres` - SQL repositories
+- `internal/domain` - domain models and errors
+- `migrations` - database schema and seed migrations
+- `docker` - postgres init scripts
+- `frontend` - React frontend integrated with this backend API
+- `scripts` - local dev helper scripts
 
-## Запуск в Docker
-1. Поднять сервисы:
+## Environment
+Create `.env` from `.env.example` and set a secure `JWT_SECRET`.
+
+Example values:
+```env
+APP_ENV=development
+HTTP_PORT=8080
+DATABASE_URL=postgres://postgres:postgres@postgres:5432/marketplace?sslmode=disable
+TEST_DATABASE_URL=postgres://postgres:postgres@localhost:5433/marketplace_test?sslmode=disable
+JWT_SECRET=replace_with_a_long_random_secret_of_at_least_32_chars
+ACCESS_TOKEN_TTL=15m
+REFRESH_TOKEN_TTL=720h
+LOG_LEVEL=info
+```
+
+## Run with Docker
+1. Start services:
 ```bash
 docker compose up -d --build
 ```
-2. Проверить статус:
+2. Check status:
 ```bash
 docker compose ps
 ```
-3. Остановить и удалить тома:
+3. Health checks:
+```bash
+curl http://localhost:8080/healthz
+curl http://localhost:8080/readyz
+```
+4. Stop services:
 ```bash
 docker compose down -v
 ```
 
-## База данных
-- Контейнер Postgres создаёт базы `marketplace` и `marketplace_test` при первом старте.
-- Если том `postgres_data` уже существует и `marketplace_test` нет, выполните:
+## Database Migrations
+Run migrations from host:
 ```bash
-docker compose exec postgres createdb -U postgres marketplace_test
+go run github.com/pressly/goose/v3/cmd/goose@v3.26.0 -dir migrations postgres "postgres://postgres:postgres@localhost:5433/marketplace?sslmode=disable" up
 ```
 
-## Миграции
-Миграции запускаются с хоста (Goose выполняется локально):
+Rollback one step:
 ```bash
-DB_URL=postgres://postgres:postgres@localhost:5432/marketplace?sslmode=disable make migrate-up
-```
-Откат:
-```bash
-DB_URL=postgres://postgres:postgres@localhost:5432/marketplace?sslmode=disable make migrate-down
+go run github.com/pressly/goose/v3/cmd/goose@v3.26.0 -dir migrations postgres "postgres://postgres:postgres@localhost:5433/marketplace?sslmode=disable" down
 ```
 
-## Запуск без Docker
-1. Убедитесь, что `DATABASE_URL` указывает на локальный Postgres.
-2. Запустите сервис:
+Notes:
+- `00003_db_hardening.sql` adds DB constraints and performance indexes.
+- `00004_products_search_trgm.sql` adds optional `pg_trgm` index for faster `LIKE` search.
+
+## Run Backend Locally (without Docker API container)
+1. Start PostgreSQL only:
+```bash
+docker compose up -d postgres
+```
+2. Apply migrations.
+3. Run API:
 ```bash
 go run ./cmd/api
 ```
 
-## Тесты
+## Run Frontend Locally
 ```bash
-go test ./... -race -coverprofile=coverage.out
+cd frontend
+npm install
 ```
-Если есть интеграционные тесты, `TEST_DATABASE_URL` должен указывать на `marketplace_test`
-(обычно `postgres://postgres:postgres@localhost:5432/marketplace_test?sslmode=disable`).
 
-## Использование
-Базовый адрес по умолчанию: `http://localhost:8080`
+Create frontend env from template and run:
+```bash
+npm run dev
+```
+
+Default frontend proxy target is `http://localhost:8080`.
+
+## Tests and Checks
+Backend:
+```bash
+go test ./...
+```
+
+Frontend:
+```bash
+cd frontend
+npm run lint
+npm run test
+npm run build
+```
+
+## API Overview
+Base URL: `http://localhost:8080`
+
+Public:
 - `GET /healthz`
 - `GET /readyz`
 - `POST /api/v1/auth/register`
 - `POST /api/v1/auth/login`
 - `POST /api/v1/auth/refresh`
-- `POST /api/v1/auth/logout` (auth)
-- `GET /api/v1/auth/me` (auth)
 - `GET /api/v1/categories`
 - `GET /api/v1/categories/slug/{slug}`
 - `GET /api/v1/categories/{id}`
 - `GET /api/v1/products`
 - `GET /api/v1/products/slug/{slug}`
 - `GET /api/v1/products/{id}`
-- `GET /api/v1/profile` (auth)
-- `PATCH /api/v1/profile` (auth)
-- `GET /api/v1/favorites` (auth)
-- `POST /api/v1/favorites/{product_id}` (auth)
-- `DELETE /api/v1/favorites/{product_id}` (auth)
-- `POST /api/v1/places` (auth)
-- `GET /api/v1/places` (auth)
-- `PATCH /api/v1/places/{id}` (auth)
-- `DELETE /api/v1/places/{id}` (auth)
-- `GET /api/v1/recommendations` (auth)
+
+Authenticated:
+- `POST /api/v1/auth/logout`
+- `GET /api/v1/auth/me`
+- `GET /api/v1/profile`
+- `PATCH /api/v1/profile`
+- `GET /api/v1/favorites`
+- `POST /api/v1/favorites/{product_id}`
+- `DELETE /api/v1/favorites/{product_id}`
+- `POST /api/v1/places`
+- `GET /api/v1/places`
+- `PATCH /api/v1/places/{id}`
+- `DELETE /api/v1/places/{id}`
+- `GET /api/v1/recommendations`
+
+## Useful Commands
+From repo root:
+- `powershell -ExecutionPolicy Bypass -File scripts/dev-backend.ps1`
+- `powershell -ExecutionPolicy Bypass -File scripts/dev-frontend.ps1`
+- `go test ./...`
+
+## License
+Internal project / educational use.

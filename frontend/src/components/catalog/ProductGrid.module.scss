@@ -1,0 +1,11 @@
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(210px, 1fr));
+  gap: 0.9rem;
+}
+
+.empty {
+  margin: 0;
+  color: var(--color-text-secondary);
+  padding: 2rem 0;
+}

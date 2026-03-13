@@ -1,0 +1,23 @@
+.page {
+  min-height: 60vh;
+  display: grid;
+  place-items: center;
+  text-align: center;
+  gap: 0.4rem;
+}
+
+.page h1 {
+  margin: 0;
+  font-size: 2.2rem;
+}
+
+.page p {
+  margin: 0;
+  color: var(--color-text-secondary);
+}
+
+.page a {
+  color: var(--color-primary);
+  font-weight: 600;
+  text-decoration: none;
+}
