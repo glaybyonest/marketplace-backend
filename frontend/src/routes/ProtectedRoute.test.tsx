@@ -23,12 +23,16 @@ const createTestStore = (isAuthenticated: boolean) => {
           name: 'User',
           fullName: 'User',
           email: 'user@test.local',
+          isEmailVerified: true,
           role: 'customer',
         }
       : null,
     isAuthenticated,
     status: 'idle',
     error: null,
+    errorCode: null,
+    notice: null,
+    requiresEmailVerification: false,
   }
 
   return configureStore({

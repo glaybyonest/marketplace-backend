@@ -18,18 +18,22 @@ import (
 )
 
 type authServiceStub struct {
-	registerFn func(ctx context.Context, input usecase.RegisterInput) (domain.User, domain.TokenPair, error)
-	loginFn    func(ctx context.Context, input usecase.LoginInput) (domain.User, domain.TokenPair, error)
-	refreshFn  func(ctx context.Context, input usecase.RefreshInput) (domain.TokenPair, error)
-	logoutFn   func(ctx context.Context, input usecase.LogoutInput) error
-	meFn       func(ctx context.Context, userID uuid.UUID) (domain.User, error)
+	registerFn                 func(ctx context.Context, input usecase.RegisterInput) (domain.AuthResult, error)
+	loginFn                    func(ctx context.Context, input usecase.LoginInput) (domain.AuthResult, error)
+	refreshFn                  func(ctx context.Context, input usecase.RefreshInput) (domain.TokenPair, error)
+	logoutFn                   func(ctx context.Context, input usecase.LogoutInput) error
+	meFn                       func(ctx context.Context, userID uuid.UUID) (domain.User, error)
+	requestEmailVerificationFn func(ctx context.Context, input usecase.VerifyEmailRequestInput) error
+	confirmEmailVerificationFn func(ctx context.Context, input usecase.VerifyEmailConfirmInput) (domain.User, error)
+	requestPasswordResetFn     func(ctx context.Context, input usecase.PasswordResetRequestInput) error
+	confirmPasswordResetFn     func(ctx context.Context, input usecase.PasswordResetConfirmInput) error
 }
 
-func (s *authServiceStub) Register(ctx context.Context, input usecase.RegisterInput) (domain.User, domain.TokenPair, error) {
+func (s *authServiceStub) Register(ctx context.Context, input usecase.RegisterInput) (domain.AuthResult, error) {
 	return s.registerFn(ctx, input)
 }
 
-func (s *authServiceStub) Login(ctx context.Context, input usecase.LoginInput) (domain.User, domain.TokenPair, error) {
+func (s *authServiceStub) Login(ctx context.Context, input usecase.LoginInput) (domain.AuthResult, error) {
 	return s.loginFn(ctx, input)
 }
 
@@ -45,14 +49,41 @@ func (s *authServiceStub) Me(ctx context.Context, userID uuid.UUID) (domain.User
 	return s.meFn(ctx, userID)
 }
 
+func (s *authServiceStub) RequestEmailVerification(ctx context.Context, input usecase.VerifyEmailRequestInput) error {
+	return s.requestEmailVerificationFn(ctx, input)
+}
+
+func (s *authServiceStub) ConfirmEmailVerification(ctx context.Context, input usecase.VerifyEmailConfirmInput) (domain.User, error) {
+	return s.confirmEmailVerificationFn(ctx, input)
+}
+
+func (s *authServiceStub) RequestPasswordReset(ctx context.Context, input usecase.PasswordResetRequestInput) error {
+	return s.requestPasswordResetFn(ctx, input)
+}
+
+func (s *authServiceStub) ConfirmPasswordReset(ctx context.Context, input usecase.PasswordResetConfirmInput) error {
+	return s.confirmPasswordResetFn(ctx, input)
+}
+
 func TestAuthHandler(t *testing.T) {
 	userID := uuid.New()
 	stub := &authServiceStub{
-		registerFn: func(ctx context.Context, input usecase.RegisterInput) (domain.User, domain.TokenPair, error) {
-			return domain.User{ID: userID, Email: input.Email}, domain.TokenPair{AccessToken: "a", RefreshToken: "r", TokenType: "Bearer"}, nil
+		registerFn: func(ctx context.Context, input usecase.RegisterInput) (domain.AuthResult, error) {
+			return domain.AuthResult{
+				User:                      domain.User{ID: userID, Email: input.Email},
+				RequiresEmailVerification: true,
+				Message:                   "verification email sent",
+			}, nil
 		},
-		loginFn: func(ctx context.Context, input usecase.LoginInput) (domain.User, domain.TokenPair, error) {
-			return domain.User{ID: userID, Email: input.Email}, domain.TokenPair{AccessToken: "a", RefreshToken: "r", TokenType: "Bearer"}, nil
+		loginFn: func(ctx context.Context, input usecase.LoginInput) (domain.AuthResult, error) {
+			return domain.AuthResult{
+				User: domain.User{ID: userID, Email: input.Email},
+				Tokens: &domain.TokenPair{
+					AccessToken:  "a",
+					RefreshToken: "r",
+					TokenType:    "Bearer",
+				},
+			}, nil
 		},
 		refreshFn: func(ctx context.Context, input usecase.RefreshInput) (domain.TokenPair, error) {
 			return domain.TokenPair{AccessToken: "a2", RefreshToken: "r2", TokenType: "Bearer"}, nil
@@ -61,6 +92,12 @@ func TestAuthHandler(t *testing.T) {
 		meFn: func(ctx context.Context, userID uuid.UUID) (domain.User, error) {
 			return domain.User{ID: userID, Email: "me@example.com"}, nil
 		},
+		requestEmailVerificationFn: func(ctx context.Context, input usecase.VerifyEmailRequestInput) error { return nil },
+		confirmEmailVerificationFn: func(ctx context.Context, input usecase.VerifyEmailConfirmInput) (domain.User, error) {
+			return domain.User{ID: userID, Email: "verified@example.com", IsEmailVerified: true}, nil
+		},
+		requestPasswordResetFn: func(ctx context.Context, input usecase.PasswordResetRequestInput) error { return nil },
+		confirmPasswordResetFn: func(ctx context.Context, input usecase.PasswordResetConfirmInput) error { return nil },
 	}
 	handler := NewAuthHandler(stub)
 
@@ -87,6 +124,34 @@ func TestAuthHandler(t *testing.T) {
 		req := httptest.NewRequest(http.MethodPost, "/login", strings.NewReader(`{"email":"user@example.com","password":"StrongPass1"}`))
 		rec := httptest.NewRecorder()
 		handler.Login(rec, req)
+		assert.Equal(t, http.StatusOK, rec.Code)
+	})
+
+	t.Run("request verification success", func(t *testing.T) {
+		req := httptest.NewRequest(http.MethodPost, "/verify-email/request", strings.NewReader(`{"email":"user@example.com"}`))
+		rec := httptest.NewRecorder()
+		handler.RequestEmailVerification(rec, req)
+		assert.Equal(t, http.StatusOK, rec.Code)
+	})
+
+	t.Run("confirm verification success", func(t *testing.T) {
+		req := httptest.NewRequest(http.MethodPost, "/verify-email/confirm", strings.NewReader(`{"token":"abcdefghijklmnopqrstuvwxyz123456"}`))
+		rec := httptest.NewRecorder()
+		handler.ConfirmEmailVerification(rec, req)
+		assert.Equal(t, http.StatusOK, rec.Code)
+	})
+
+	t.Run("request password reset success", func(t *testing.T) {
+		req := httptest.NewRequest(http.MethodPost, "/password-reset/request", strings.NewReader(`{"email":"user@example.com"}`))
+		rec := httptest.NewRecorder()
+		handler.RequestPasswordReset(rec, req)
+		assert.Equal(t, http.StatusOK, rec.Code)
+	})
+
+	t.Run("confirm password reset success", func(t *testing.T) {
+		req := httptest.NewRequest(http.MethodPost, "/password-reset/confirm", strings.NewReader(`{"token":"abcdefghijklmnopqrstuvwxyz123456","new_password":"StrongPass2"}`))
+		rec := httptest.NewRecorder()
+		handler.ConfirmPasswordReset(rec, req)
 		assert.Equal(t, http.StatusOK, rec.Code)
 	})
 

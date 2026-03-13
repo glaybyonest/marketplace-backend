@@ -18,23 +18,23 @@ const validateForm = (name: string, email: string, password: string): string | n
   const trimmedEmail = email.trim()
 
   if (!trimmedName) {
-    return '??????? ???'
+    return 'Enter your full name'
   }
 
   if (trimmedName.length > 120) {
-    return '??? ?????? ???? ?? ??????? 120 ????????'
+    return 'Full name must be 120 characters or fewer'
   }
 
   if (!trimmedEmail) {
-    return '??????? email'
+    return 'Enter your email'
   }
 
   if (password.length < PASSWORD_MIN_LEN || password.length > PASSWORD_MAX_LEN) {
-    return '?????? ?????? ???? ?? 8 ?? 72 ????????'
+    return 'Password must be between 8 and 72 characters'
   }
 
   if (!hasLatinLetterAndDigit(password)) {
-    return '?????? ?????? ????????? ??????? ???? ????????? ????? ? ???? ?????'
+    return 'Password must include at least one letter and one digit'
   }
 
   return null
@@ -61,17 +61,30 @@ export const RegisterPage = () => {
 
     setLocalError(null)
 
+    const normalizedEmail = email.trim()
     const result = await dispatch(
       registerThunk({
         name: name.trim(),
-        email: email.trim(),
+        email: normalizedEmail,
         password,
       }),
     )
 
-    if (registerThunk.fulfilled.match(result)) {
-      navigate('/')
+    if (!registerThunk.fulfilled.match(result)) {
+      return
     }
+
+    if (result.payload.requiresEmailVerification) {
+      navigate(`/verify-email?email=${encodeURIComponent(normalizedEmail)}`, {
+        replace: true,
+        state: {
+          message: result.payload.message ?? 'We sent a verification link to your email',
+        },
+      })
+      return
+    }
+
+    navigate('/', { replace: true })
   }
 
   const shownError = localError ?? authState.error
@@ -79,11 +92,12 @@ export const RegisterPage = () => {
   return (
     <div className={styles.page}>
       <section className={styles.card}>
-        <h1>???????????</h1>
-        <p>???????? ??????? ??????????.</p>
+        <h1>Create account</h1>
+        <p>Create an account to save favorites, manage places, and place orders.</p>
+
         <form className={styles.form} onSubmit={handleSubmit}>
           <label>
-            ???
+            Full name
             <input
               value={name}
               onChange={(event) => setName(event.target.value)}
@@ -105,7 +119,7 @@ export const RegisterPage = () => {
             />
           </label>
           <label>
-            ??????
+            Password
             <input
               type="password"
               value={password}
@@ -116,14 +130,15 @@ export const RegisterPage = () => {
               required
             />
           </label>
-          <p className={styles.hint}>??????? 8 ????????, ????????? ????? ? ?????.</p>
+          <p className={styles.hint}>Use 8 to 72 characters with at least one letter and one digit.</p>
           {shownError ? <ErrorMessage message={shownError} /> : null}
           <button type="submit" disabled={authState.status === 'loading'}>
-            {authState.status === 'loading' ? '??????? ???????...' : '??????????????????'}
+            {authState.status === 'loading' ? 'Creating account...' : 'Create account'}
           </button>
         </form>
+
         <p>
-          ??? ???? ???????? <Link to="/login">?????</Link>
+          Already registered? <Link to="/login">Sign in</Link>
         </p>
       </section>
     </div>

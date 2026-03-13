@@ -9,6 +9,7 @@ import (
 	"time"
 
 	httpapi "marketplace-backend/internal/http"
+	"marketplace-backend/internal/mailer"
 	"marketplace-backend/internal/repository/postgres"
 	"marketplace-backend/internal/security"
 	"marketplace-backend/internal/usecase"
@@ -42,6 +43,7 @@ func New(cfg config.Config, logger *slog.Logger) (*Application, error) {
 
 	userRepo := postgres.NewUserRepository(db)
 	sessionRepo := postgres.NewSessionRepository(db)
+	actionTokenRepo := postgres.NewAuthActionTokenRepository(db)
 	categoryRepo := postgres.NewCategoryRepository(db)
 	productRepo := postgres.NewProductRepository(db)
 	cartRepo := postgres.NewCartRepository(db)
@@ -53,8 +55,21 @@ func New(cfg config.Config, logger *slog.Logger) (*Application, error) {
 
 	jwtManager := security.NewJWTManager(cfg.JWTSecret, cfg.AccessTokenTTL)
 	passwordManager := security.NewPasswordManager()
+	logMailer := mailer.NewLogSender(logger)
 
-	authService := usecase.NewAuthService(userRepo, sessionRepo, jwtManager, passwordManager, cfg.RefreshTokenTTL)
+	authService := usecase.NewAuthService(
+		userRepo,
+		sessionRepo,
+		actionTokenRepo,
+		jwtManager,
+		passwordManager,
+		logMailer,
+		cfg.AppBaseURL,
+		cfg.MailFrom,
+		cfg.RefreshTokenTTL,
+		cfg.EmailVerifyTTL,
+		cfg.PasswordResetTTL,
+	)
 	catalogService := usecase.NewCatalogService(categoryRepo, productRepo, eventRepo)
 	cartService := usecase.NewCartService(cartRepo, productRepo)
 	ordersService := usecase.NewOrdersService(orderRepo, placeRepo)

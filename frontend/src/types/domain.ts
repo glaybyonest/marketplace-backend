@@ -5,6 +5,8 @@ export interface User {
   email: string
   fullName?: string
   isActive?: boolean
+  emailVerifiedAt?: string
+  isEmailVerified?: boolean
   // legacy fields kept for compatibility with non-active screens
   name?: string
   role?: UserRole

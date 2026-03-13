@@ -3,10 +3,12 @@ package usecase
 import (
 	"context"
 	"errors"
+	"strings"
 	"testing"
 	"time"
 
 	"marketplace-backend/internal/domain"
+	"marketplace-backend/internal/mailer"
 	"marketplace-backend/internal/security"
 
 	"github.com/google/uuid"
@@ -15,10 +17,12 @@ import (
 )
 
 type authState struct {
-	now      func() time.Time
-	users    map[uuid.UUID]domain.User
-	byEmail  map[string]uuid.UUID
-	sessions map[string]domain.UserSession
+	now          func() time.Time
+	users        map[uuid.UUID]domain.User
+	byEmail      map[string]uuid.UUID
+	sessions     map[string]domain.UserSession
+	actionTokens map[string]domain.AuthActionToken
+	sentMessages []mailer.Message
 }
 
 type authUserRepoMock struct {
@@ -33,17 +37,21 @@ func (m *authUserRepoMock) Create(ctx context.Context, input CreateUserInput) (d
 	if _, exists := m.state.byEmail[input.Email]; exists {
 		return domain.User{}, domain.ErrConflict
 	}
+
 	user := domain.User{
-		ID:           uuid.New(),
-		Email:        input.Email,
-		PasswordHash: input.PasswordHash,
-		CreatedAt:    m.state.now(),
-		UpdatedAt:    m.state.now(),
-		IsActive:     true,
+		ID:              uuid.New(),
+		Email:           input.Email,
+		PasswordHash:    input.PasswordHash,
+		CreatedAt:       m.state.now(),
+		UpdatedAt:       m.state.now(),
+		IsActive:        true,
+		EmailVerifiedAt: input.EmailVerifiedAt,
+		IsEmailVerified: input.EmailVerifiedAt != nil,
 	}
 	if input.FullName != nil {
 		user.FullName = *input.FullName
 	}
+
 	m.state.users[user.ID] = user
 	m.state.byEmail[user.Email] = user.ID
 	return user, nil
@@ -68,6 +76,35 @@ func (m *authUserRepoMock) GetByID(ctx context.Context, id uuid.UUID) (domain.Us
 	if !ok {
 		return domain.User{}, domain.ErrNotFound
 	}
+	return user, nil
+}
+
+func (m *authUserRepoMock) UpdatePasswordHash(ctx context.Context, id uuid.UUID, passwordHash string) error {
+	if m.force != nil {
+		return m.force
+	}
+	user, ok := m.state.users[id]
+	if !ok {
+		return domain.ErrNotFound
+	}
+	user.PasswordHash = passwordHash
+	user.UpdatedAt = m.state.now()
+	m.state.users[id] = user
+	return nil
+}
+
+func (m *authUserRepoMock) MarkEmailVerified(ctx context.Context, id uuid.UUID, verifiedAt time.Time) (domain.User, error) {
+	if m.force != nil {
+		return domain.User{}, m.force
+	}
+	user, ok := m.state.users[id]
+	if !ok {
+		return domain.User{}, domain.ErrNotFound
+	}
+	user.EmailVerifiedAt = &verifiedAt
+	user.IsEmailVerified = true
+	user.UpdatedAt = m.state.now()
+	m.state.users[id] = user
 	return user, nil
 }
 
@@ -137,6 +174,88 @@ func (m *authSessionRepoMock) RevokeByRefreshTokenHash(ctx context.Context, user
 	return true, nil
 }
 
+func (m *authSessionRepoMock) RevokeAllByUserID(ctx context.Context, userID uuid.UUID, revokedAt time.Time) error {
+	if m.force != nil {
+		return m.force
+	}
+	for key, session := range m.state.sessions {
+		if session.UserID == userID && session.RevokedAt == nil {
+			session.RevokedAt = &revokedAt
+			m.state.sessions[key] = session
+		}
+	}
+	return nil
+}
+
+type authActionTokenRepoMock struct {
+	state *authState
+	force error
+}
+
+func (m *authActionTokenRepoMock) Create(ctx context.Context, token domain.AuthActionToken) (domain.AuthActionToken, error) {
+	if m.force != nil {
+		return domain.AuthActionToken{}, m.force
+	}
+	token.CreatedAt = m.state.now()
+	m.state.actionTokens[token.TokenHash] = token
+	return token, nil
+}
+
+func (m *authActionTokenRepoMock) GetActiveByHash(
+	ctx context.Context,
+	purpose domain.AuthActionPurpose,
+	tokenHash string,
+	now time.Time,
+) (domain.AuthActionToken, error) {
+	if m.force != nil {
+		return domain.AuthActionToken{}, m.force
+	}
+	token, ok := m.state.actionTokens[tokenHash]
+	if !ok || token.Purpose != purpose || token.ConsumedAt != nil || !token.ExpiresAt.After(now) {
+		return domain.AuthActionToken{}, domain.ErrNotFound
+	}
+	return token, nil
+}
+
+func (m *authActionTokenRepoMock) Consume(ctx context.Context, id uuid.UUID, consumedAt time.Time) (bool, error) {
+	if m.force != nil {
+		return false, m.force
+	}
+	for key, token := range m.state.actionTokens {
+		if token.ID == id && token.ConsumedAt == nil {
+			token.ConsumedAt = &consumedAt
+			m.state.actionTokens[key] = token
+			return true, nil
+		}
+	}
+	return false, nil
+}
+
+func (m *authActionTokenRepoMock) DeleteActiveByUserAndPurpose(ctx context.Context, userID uuid.UUID, purpose domain.AuthActionPurpose) error {
+	if m.force != nil {
+		return m.force
+	}
+	for key, token := range m.state.actionTokens {
+		if token.UserID == userID && token.Purpose == purpose && token.ConsumedAt == nil {
+			delete(m.state.actionTokens, key)
+		}
+	}
+	return nil
+}
+
+type authMailerMock struct {
+	state *authState
+	force error
+}
+
+func (m *authMailerMock) Send(ctx context.Context, message mailer.Message) error {
+	if m.force != nil {
+		return m.force
+	}
+	m.state.sentMessages = append(m.state.sentMessages, message)
+	return nil
+}
+
 type jwtMock struct {
 	fail error
 }
@@ -149,193 +268,210 @@ func (j *jwtMock) Generate(userID uuid.UUID, email string) (string, time.Time, e
 	return "access-" + userID.String(), now.Add(15 * time.Minute), nil
 }
 
+func extractActionToken(t *testing.T, messages []mailer.Message, subject string) string {
+	t.Helper()
+
+	for _, message := range messages {
+		if !strings.Contains(message.Subject, subject) {
+			continue
+		}
+
+		tokenIdx := strings.LastIndex(message.Text, "token=")
+		require.NotEqual(t, -1, tokenIdx)
+
+		token := strings.TrimSpace(message.Text[tokenIdx+len("token="):])
+		if newlineIdx := strings.IndexByte(token, '\n'); newlineIdx >= 0 {
+			token = token[:newlineIdx]
+		}
+		if token != "" {
+			return token
+		}
+	}
+
+	t.Fatalf("token with subject %q not found", subject)
+	return ""
+}
+
 func TestAuthService(t *testing.T) {
-	now := time.Date(2026, 2, 25, 12, 0, 0, 0, time.UTC)
+	now := time.Date(2026, 3, 13, 12, 0, 0, 0, time.UTC)
 	state := &authState{
-		now:      func() time.Time { return now },
-		users:    map[uuid.UUID]domain.User{},
-		byEmail:  map[string]uuid.UUID{},
-		sessions: map[string]domain.UserSession{},
+		now:          func() time.Time { return now },
+		users:        map[uuid.UUID]domain.User{},
+		byEmail:      map[string]uuid.UUID{},
+		sessions:     map[string]domain.UserSession{},
+		actionTokens: map[string]domain.AuthActionToken{},
+		sentMessages: make([]mailer.Message, 0),
 	}
 	users := &authUserRepoMock{state: state}
 	sessions := &authSessionRepoMock{state: state}
+	actionTokens := &authActionTokenRepoMock{state: state}
+	messageSender := &authMailerMock{state: state}
 	jwt := &jwtMock{}
-	service := NewAuthService(users, sessions, jwt, security.NewPasswordManager(), 30*24*time.Hour)
+	service := NewAuthService(
+		users,
+		sessions,
+		actionTokens,
+		jwt,
+		security.NewPasswordManager(),
+		messageSender,
+		"http://localhost:5173",
+		"no-reply@marketplace.local",
+		30*24*time.Hour,
+		24*time.Hour,
+		time.Hour,
+	)
 	service.now = state.now
 
-	t.Run("register", func(t *testing.T) {
-		tests := []struct {
-			name    string
-			input   RegisterInput
-			wantErr error
-		}{
-			{"success", RegisterInput{Email: "User@Example.com", Password: "StrongPass1", FullName: "User Name"}, nil},
-			{"invalid email", RegisterInput{Email: "bad", Password: "StrongPass1"}, domain.ErrInvalidInput},
-			{"weak password short", RegisterInput{Email: "one@example.com", Password: "123"}, domain.ErrInvalidInput},
-			{"weak password no digit", RegisterInput{Email: "two@example.com", Password: "StrongPass"}, domain.ErrInvalidInput},
-			{"weak password no letter", RegisterInput{Email: "three@example.com", Password: "12345678"}, domain.ErrInvalidInput},
-			{"duplicate email", RegisterInput{Email: "user@example.com", Password: "StrongPass1"}, domain.ErrConflict},
-			{"normalize email lower", RegisterInput{Email: "LOWER@EXAMPLE.COM", Password: "StrongPass1"}, nil},
-			{"trim full name", RegisterInput{Email: "trim@example.com", Password: "StrongPass1", FullName: "  Ivan  "}, nil},
-			{"empty full name", RegisterInput{Email: "empty@example.com", Password: "StrongPass1", FullName: "   "}, nil},
-		}
-		for _, tc := range tests {
-			t.Run(tc.name, func(t *testing.T) {
-				user, tokens, err := service.Register(context.Background(), tc.input)
-				if tc.wantErr != nil {
-					require.Error(t, err)
-					assert.ErrorIs(t, err, tc.wantErr)
-					return
-				}
-				require.NoError(t, err)
-				assert.NotEmpty(t, user.ID)
-				assert.NotEmpty(t, tokens.AccessToken)
-				assert.NotEmpty(t, tokens.RefreshToken)
-				assert.NotEqual(t, tc.input.Password, user.PasswordHash)
-			})
-		}
+	t.Run("register requires verification", func(t *testing.T) {
+		result, err := service.Register(context.Background(), RegisterInput{
+			Email:    "User@Example.com",
+			Password: "StrongPass1",
+			FullName: "User Name",
+		})
+		require.NoError(t, err)
+		assert.True(t, result.RequiresEmailVerification)
+		assert.Nil(t, result.Tokens)
+		assert.False(t, result.User.IsEmailVerified)
+		require.Len(t, state.sentMessages, 1)
+		assert.Contains(t, state.sentMessages[0].Text, "http://localhost:5173/verify-email?token=")
+
+		_, err = service.Login(context.Background(), LoginInput{
+			Email:    "user@example.com",
+			Password: "StrongPass1",
+		})
+		require.Error(t, err)
+		assert.ErrorIs(t, err, domain.ErrEmailNotVerified)
 	})
 
-	t.Run("login", func(t *testing.T) {
-		tests := []struct {
-			name    string
-			input   LoginInput
-			wantErr error
-		}{
-			{"success", LoginInput{Email: "user@example.com", Password: "StrongPass1"}, nil},
-			{"normalize email", LoginInput{Email: "USER@EXAMPLE.COM", Password: "StrongPass1"}, nil},
-			{"wrong password", LoginInput{Email: "user@example.com", Password: "WrongPass1"}, domain.ErrUnauthorized},
-			{"unknown email", LoginInput{Email: "none@example.com", Password: "StrongPass1"}, domain.ErrUnauthorized},
-			{"invalid email format", LoginInput{Email: "bad", Password: "StrongPass1"}, domain.ErrUnauthorized},
-			{"short password", LoginInput{Email: "user@example.com", Password: "1"}, domain.ErrUnauthorized},
-			{"empty password", LoginInput{Email: "user@example.com", Password: ""}, domain.ErrUnauthorized},
-		}
-		for _, tc := range tests {
-			t.Run(tc.name, func(t *testing.T) {
-				_, pair, err := service.Login(context.Background(), tc.input)
-				if tc.wantErr != nil {
-					require.Error(t, err)
-					assert.ErrorIs(t, err, tc.wantErr)
-					return
-				}
-				require.NoError(t, err)
-				assert.Equal(t, "Bearer", pair.TokenType)
-			})
-		}
+	t.Run("verify email and login", func(t *testing.T) {
+		verifyToken := extractActionToken(t, state.sentMessages, "Verify your email")
+
+		user, err := service.ConfirmEmailVerification(context.Background(), VerifyEmailConfirmInput{Token: verifyToken})
+		require.NoError(t, err)
+		assert.True(t, user.IsEmailVerified)
+
+		result, err := service.Login(context.Background(), LoginInput{
+			Email:    "user@example.com",
+			Password: "StrongPass1",
+		})
+		require.NoError(t, err)
+		require.NotNil(t, result.Tokens)
+		assert.Equal(t, "Bearer", result.Tokens.TokenType)
+
+		_, err = service.ConfirmEmailVerification(context.Background(), VerifyEmailConfirmInput{Token: verifyToken})
+		require.Error(t, err)
+		assert.ErrorIs(t, err, domain.ErrInvalidToken)
 	})
 
-	t.Run("refresh logout me and infra", func(t *testing.T) {
-		user, pair, err := service.Login(context.Background(), LoginInput{Email: "user@example.com", Password: "StrongPass1"})
+	t.Run("request verification resend is generic", func(t *testing.T) {
+		require.NoError(t, service.RequestEmailVerification(context.Background(), VerifyEmailRequestInput{
+			Email: "missing@example.com",
+		}))
+		require.NoError(t, service.RequestEmailVerification(context.Background(), VerifyEmailRequestInput{
+			Email: "user@example.com",
+		}))
+	})
+
+	t.Run("password reset", func(t *testing.T) {
+		loginResult, err := service.Login(context.Background(), LoginInput{
+			Email:    "user@example.com",
+			Password: "StrongPass1",
+		})
+		require.NoError(t, err)
+		oldRefreshToken := loginResult.Tokens.RefreshToken
+
+		err = service.RequestPasswordReset(context.Background(), PasswordResetRequestInput{
+			Email: "user@example.com",
+		})
+		require.NoError(t, err)
+		require.Len(t, state.sentMessages, 2)
+		assert.Contains(t, state.sentMessages[1].Text, "http://localhost:5173/reset-password?token=")
+
+		resetToken := extractActionToken(t, state.sentMessages, "Reset your password")
+		require.NoError(t, service.ConfirmPasswordReset(context.Background(), PasswordResetConfirmInput{
+			Token:       resetToken,
+			NewPassword: "StrongerPass2",
+		}))
+
+		_, err = service.Login(context.Background(), LoginInput{
+			Email:    "user@example.com",
+			Password: "StrongPass1",
+		})
+		require.Error(t, err)
+		assert.ErrorIs(t, err, domain.ErrUnauthorized)
+
+		_, err = service.Login(context.Background(), LoginInput{
+			Email:    "user@example.com",
+			Password: "StrongerPass2",
+		})
 		require.NoError(t, err)
 
-		invalid := "invalid-refresh-token-value"
-		revoked := "revoked-refresh-token-value"
-		reused := "reused-refresh-token-value"
-		expired := "expired-refresh-token-value"
-		nowCopy := state.now()
-		revokedAt := nowCopy
-		rotatedAt := nowCopy
-		state.sessions[security.HashToken(revoked)] = domain.UserSession{
-			ID:               uuid.New(),
-			UserID:           user.ID,
-			RefreshTokenHash: security.HashToken(revoked),
-			ExpiresAt:        nowCopy.Add(time.Hour),
-			RevokedAt:        &revokedAt,
-		}
-		state.sessions[security.HashToken(reused)] = domain.UserSession{
-			ID:               uuid.New(),
-			UserID:           user.ID,
-			RefreshTokenHash: security.HashToken(reused),
-			ExpiresAt:        nowCopy.Add(time.Hour),
-			RotatedAt:        &rotatedAt,
-		}
-		state.sessions[security.HashToken(expired)] = domain.UserSession{
-			ID:               uuid.New(),
-			UserID:           user.ID,
-			RefreshTokenHash: security.HashToken(expired),
-			ExpiresAt:        nowCopy.Add(-time.Minute),
-		}
+		_, err = service.Refresh(context.Background(), RefreshInput{
+			RefreshToken: oldRefreshToken,
+		})
+		require.Error(t, err)
+		assert.ErrorIs(t, err, domain.ErrSessionClosed)
+	})
 
-		tests := []struct {
-			name    string
-			run     func() error
-			wantErr error
-		}{
-			{"refresh success", func() error {
-				_, err := service.Refresh(context.Background(), RefreshInput{RefreshToken: pair.RefreshToken})
-				return err
-			}, nil},
-			{"refresh reused old token", func() error {
-				_, err := service.Refresh(context.Background(), RefreshInput{RefreshToken: pair.RefreshToken})
-				return err
-			}, domain.ErrTokenReused},
-			{"refresh unknown token", func() error {
-				_, err := service.Refresh(context.Background(), RefreshInput{RefreshToken: invalid})
-				return err
-			}, domain.ErrUnauthorized},
-			{"refresh revoked token", func() error {
-				_, err := service.Refresh(context.Background(), RefreshInput{RefreshToken: revoked})
-				return err
-			}, domain.ErrSessionClosed},
-			{"refresh rotated token", func() error {
-				_, err := service.Refresh(context.Background(), RefreshInput{RefreshToken: reused})
-				return err
-			}, domain.ErrTokenReused},
-			{"refresh expired token", func() error {
-				_, err := service.Refresh(context.Background(), RefreshInput{RefreshToken: expired})
-				return err
-			}, domain.ErrUnauthorized},
-			{"refresh empty token", func() error {
-				_, err := service.Refresh(context.Background(), RefreshInput{RefreshToken: ""})
-				return err
-			}, domain.ErrUnauthorized},
-			{"logout success", func() error {
-				return service.Logout(context.Background(), LogoutInput{UserID: user.ID, RefreshToken: pair.RefreshToken + "-new"})
-			}, domain.ErrUnauthorized},
-			{"logout unknown token", func() error {
-				return service.Logout(context.Background(), LogoutInput{UserID: user.ID, RefreshToken: invalid})
-			}, domain.ErrUnauthorized},
-			{"logout nil user", func() error {
-				return service.Logout(context.Background(), LogoutInput{UserID: uuid.Nil, RefreshToken: invalid})
-			}, domain.ErrUnauthorized},
-			{"me success", func() error { _, err := service.Me(context.Background(), user.ID); return err }, nil},
-			{"me nil user", func() error { _, err := service.Me(context.Background(), uuid.Nil); return err }, domain.ErrUnauthorized},
-			{"me not found", func() error { _, err := service.Me(context.Background(), uuid.New()); return err }, domain.ErrNotFound},
-			{"jwt fail on login", func() error {
-				jwt.fail = errors.New("jwt-fail")
-				defer func() { jwt.fail = nil }()
-				_, _, err := service.Login(context.Background(), LoginInput{Email: "user@example.com", Password: "StrongPass1"})
-				return err
-			}, errors.New("jwt-fail")},
-			{"repo user fail", func() error {
-				users.force = errors.New("user-fail")
-				defer func() { users.force = nil }()
-				_, _, err := service.Login(context.Background(), LoginInput{Email: "user@example.com", Password: "StrongPass1"})
-				return err
-			}, errors.New("user-fail")},
-			{"repo session fail", func() error {
-				sessions.force = errors.New("session-fail")
-				defer func() { sessions.force = nil }()
-				_, _, err := service.Login(context.Background(), LoginInput{Email: "user@example.com", Password: "StrongPass1"})
-				return err
-			}, errors.New("session-fail")},
-		}
+	t.Run("request reset for unknown email is generic", func(t *testing.T) {
+		require.NoError(t, service.RequestPasswordReset(context.Background(), PasswordResetRequestInput{
+			Email: "nobody@example.com",
+		}))
+	})
 
-		for _, tc := range tests {
-			t.Run(tc.name, func(t *testing.T) {
-				err := tc.run()
-				if tc.wantErr == nil {
-					require.NoError(t, err)
-					return
-				}
-				require.Error(t, err)
-				if tc.wantErr == domain.ErrUnauthorized || tc.wantErr == domain.ErrTokenReused ||
-					tc.wantErr == domain.ErrSessionClosed || tc.wantErr == domain.ErrNotFound {
-					assert.ErrorIs(t, err, tc.wantErr)
-				} else {
-					assert.Contains(t, err.Error(), tc.wantErr.Error())
-				}
-			})
-		}
+	t.Run("invalid token and infra failures", func(t *testing.T) {
+		err := service.ConfirmPasswordReset(context.Background(), PasswordResetConfirmInput{
+			Token:       "missing-token-value-1234567890",
+			NewPassword: "StrongPass1",
+		})
+		require.Error(t, err)
+		assert.ErrorIs(t, err, domain.ErrInvalidToken)
+
+		err = service.ConfirmPasswordReset(context.Background(), PasswordResetConfirmInput{
+			Token:       "another-missing-token-value-1234567890",
+			NewPassword: "123",
+		})
+		require.Error(t, err)
+		assert.ErrorIs(t, err, domain.ErrInvalidInput)
+
+		jwt.fail = errors.New("jwt-fail")
+		defer func() { jwt.fail = nil }()
+		_, err = service.Login(context.Background(), LoginInput{
+			Email:    "user@example.com",
+			Password: "StrongerPass2",
+		})
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "jwt-fail")
+
+		messageSender.force = errors.New("mail-fail")
+		defer func() { messageSender.force = nil }()
+		err = service.RequestPasswordReset(context.Background(), PasswordResetRequestInput{
+			Email: "user@example.com",
+		})
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "mail-fail")
+	})
+
+	t.Run("logout and me", func(t *testing.T) {
+		result, err := service.Login(context.Background(), LoginInput{
+			Email:    "user@example.com",
+			Password: "StrongerPass2",
+		})
+		require.NoError(t, err)
+
+		require.NoError(t, service.Logout(context.Background(), LogoutInput{
+			UserID:       result.User.ID,
+			RefreshToken: result.Tokens.RefreshToken,
+		}))
+
+		_, err = service.Refresh(context.Background(), RefreshInput{
+			RefreshToken: result.Tokens.RefreshToken,
+		})
+		require.Error(t, err)
+		assert.ErrorIs(t, err, domain.ErrSessionClosed)
+
+		me, err := service.Me(context.Background(), result.User.ID)
+		require.NoError(t, err)
+		assert.Equal(t, result.User.ID, me.ID)
 	})
 }

@@ -1,46 +1,48 @@
-﻿# Marketplace Backend
+# Marketplace Backend
 
-Бэкенд маркетплейса на Go с JWT-аутентификацией, каталогом, избранным, корзиной, checkout, заказами, адресами и персональными рекомендациями.
+Go-бэкенд маркетплейса с frontend на React/Vite в том же репозитории.
+
+Сейчас проект покрывает:
+- JWT auth с `access/refresh` токенами
+- подтверждение email после регистрации
+- восстановление пароля по одноразовой ссылке
+- каталог товаров и категории
+- избранное
+- адреса пользователя (`places`)
+- серверную корзину
+- checkout и заказы
+- персональные рекомендации
 
 ## Требования
 - Docker Desktop 4+
 - Docker Compose v2
-- Node.js 20+ и npm 10+ (для локального frontend)
-- Go 1.24+ (для локального backend без API-контейнера)
+- Node.js 20+ и npm 10+
+- Go 1.24+ для локального запуска backend без контейнера API
 
 ## Технологии
 - Go 1.24+
 - PostgreSQL 16
-- Chi router
-- Pgx
+- Chi
+- pgx
 - Goose migrations
 - Docker / Docker Compose
-- Frontend: React + Vite (в папке `frontend/`)
+- React + Vite (`frontend/`)
 
 ## Структура репозитория
-- `cmd/api` - точка входа приложения
-- `internal/app` - инициализация и сборка зависимостей
-- `internal/http` - handlers, middleware, DTO, envelope-ответы
+- `cmd/api` - точка входа backend
+- `internal/app` - сборка зависимостей и запуск приложения
+- `internal/http` - router, handlers, middleware, DTO, response envelope
 - `internal/usecase` - бизнес-логика
-- `internal/repository/postgres` - SQL-репозитории
+- `internal/repository/postgres` - PostgreSQL репозитории
 - `internal/domain` - доменные модели и ошибки
-- `migrations` - миграции схемы и сиды
+- `internal/mailer` - отправка email через логгер в dev-режиме
+- `migrations` - миграции БД
 - `docker` - init-скрипты PostgreSQL
-- `frontend` - фронтенд, интегрированный с этим API
-- `scripts` - вспомогательные скрипты запуска
-
-## Что уже реализовано
-- JWT auth с access/refresh token и logout/revoke
-- каталог товаров и категории
-- избранное
-- адреса пользователя (`places`)
-- серверная корзина
-- checkout из корзины по сохраненному адресу
-- история заказов
-- персональные рекомендации
+- `frontend` - клиентское приложение
+- `scripts` - скрипты локального запуска
 
 ## Переменные окружения
-Создайте `.env` на основе `.env.example` и задайте безопасный `JWT_SECRET`.
+Создайте `.env` на основе `.env.example`.
 
 Пример:
 ```env
@@ -49,68 +51,78 @@ HTTP_PORT=8080
 DATABASE_URL=postgres://postgres:postgres@postgres:5432/marketplace?sslmode=disable
 TEST_DATABASE_URL=postgres://postgres:postgres@localhost:5433/marketplace_test?sslmode=disable
 JWT_SECRET=replace_with_a_long_random_secret_of_at_least_32_chars
+APP_BASE_URL=http://localhost:5173
+MAIL_FROM=no-reply@marketplace.local
 ACCESS_TOKEN_TTL=15m
 REFRESH_TOKEN_TTL=720h
+EMAIL_VERIFY_TTL=24h
+PASSWORD_RESET_TTL=1h
 LOG_LEVEL=info
 ```
 
-## Быстрый старт (одним скриптом)
-Из корня репозитория:
+Пояснения:
+- `APP_BASE_URL` нужен для ссылок подтверждения email и сброса пароля.
+- `MAIL_FROM` используется как адрес отправителя.
+- В dev-конфигурации письма не уходят во внешний SMTP: backend пишет их в логи контейнера `api`.
+
+Frontend env:
+```env
+VITE_API_BASE_URL=/api
+VITE_API_PROXY_TARGET=http://localhost:8080
+```
+
+## Быстрый старт
+Один скрипт из корня репозитория:
+
 ```powershell
 powershell -ExecutionPolicy Bypass -File scripts/dev-all.ps1
 ```
 
-Что делает скрипт:
-- создаёт `.env` из `.env.example`, если файла нет;
-- поднимает `postgres`, `api`, `adminer` через `docker compose`;
-- ждёт готовность backend (`/readyz`);
-- запускает frontend (`npm run dev`).
+Скрипт:
+- создаёт `.env` из `.env.example`, если файла нет
+- поднимает `postgres`, `api`, `adminer`
+- ждёт `http://localhost:8080/readyz`
+- ставит frontend-зависимости при необходимости
+- запускает `frontend` через `npm run dev`
 
 Опции:
 ```powershell
-# пропустить npm install во frontend
+# пропустить npm install
 powershell -ExecutionPolicy Bypass -File scripts/dev-all.ps1 -SkipFrontendInstall
 
-# при выходе из скрипта автоматически остановить docker-контейнеры
+# остановить docker compose при завершении скрипта
 powershell -ExecutionPolicy Bypass -File scripts/dev-all.ps1 -StopContainersOnExit
 ```
 
-## Запуск вручную через Docker
-1. Поднять сервисы:
+## Запуск вручную
+1. Поднимите сервисы:
 ```bash
 docker compose up -d --build
 ```
-2. Проверить статус:
-```bash
-docker compose ps
-```
-3. Проверить health endpoints:
+2. Проверьте backend:
 ```bash
 curl http://localhost:8080/healthz
 curl http://localhost:8080/readyz
 ```
-4. Остановить сервисы:
-```bash
-docker compose down -v
-```
-
-## Локальный запуск frontend
+3. Запустите frontend:
 ```bash
 cd frontend
 npm install
 npm run dev
 ```
 
-По умолчанию фронтенд проксирует запросы на `http://localhost:8080`.
+Адреса:
+- frontend: `http://localhost:5173`
+- backend: `http://localhost:8080`
+- Adminer: `http://localhost:8081`
 
-`frontend/.env.example`:
-```env
-VITE_API_BASE_URL=/api
-VITE_API_PROXY_TARGET=http://localhost:8080
+Остановка:
+```bash
+docker compose down -v
 ```
 
-## Миграции базы данных
-Применить миграции с хоста:
+## Миграции
+Применить:
 ```bash
 go run github.com/pressly/goose/v3/cmd/goose@v3.26.0 -dir migrations postgres "postgres://postgres:postgres@localhost:5433/marketplace?sslmode=disable" up
 ```
@@ -120,23 +132,24 @@ go run github.com/pressly/goose/v3/cmd/goose@v3.26.0 -dir migrations postgres "p
 go run github.com/pressly/goose/v3/cmd/goose@v3.26.0 -dir migrations postgres "postgres://postgres:postgres@localhost:5433/marketplace?sslmode=disable" down
 ```
 
-Примечания:
-- `00003_db_hardening.sql` добавляет ограничения целостности и рабочие индексы.
-- `00004_products_search_trgm.sql` добавляет опциональный `pg_trgm` индекс для ускорения `LIKE`-поиска.
-- `00005_cart_orders.sql` добавляет таблицы корзины и заказов: `cart_items`, `orders`, `order_items`.
+Ключевые миграции:
+- `00003_db_hardening.sql` - ограничения целостности и индексы
+- `00004_products_search_trgm.sql` - ускорение `LIKE`-поиска
+- `00005_cart_orders.sql` - корзина и заказы
+- `00006_auth_email_flows.sql` - подтверждение email и reset tokens
 
-## Локальный запуск backend (без Docker API-контейнера)
-1. Поднять только PostgreSQL:
+## Локальный запуск backend без API-контейнера
+1. Поднимите только PostgreSQL:
 ```bash
 docker compose up -d postgres
 ```
-2. Применить миграции.
-3. Запустить API:
+2. Примените миграции.
+3. Запустите API:
 ```bash
 go run ./cmd/api
 ```
 
-## Тесты и проверки
+## Проверки
 Backend:
 ```bash
 go test ./...
@@ -150,7 +163,7 @@ npm run test
 npm run build
 ```
 
-## Обзор API
+## API
 Базовый адрес: `http://localhost:8080`
 
 Публичные endpoints:
@@ -159,6 +172,10 @@ npm run build
 - `POST /api/v1/auth/register`
 - `POST /api/v1/auth/login`
 - `POST /api/v1/auth/refresh`
+- `POST /api/v1/auth/verify-email/request`
+- `POST /api/v1/auth/verify-email/confirm`
+- `POST /api/v1/auth/password-reset/request`
+- `POST /api/v1/auth/password-reset/confirm`
 - `GET /api/v1/categories`
 - `GET /api/v1/categories/slug/{slug}`
 - `GET /api/v1/categories/{id}`
@@ -188,24 +205,36 @@ npm run build
 - `GET /api/v1/orders/{id}`
 - `GET /api/v1/recommendations`
 
-## Сквозной пользовательский сценарий
-1. Зарегистрироваться или войти.
-2. Добавить один или несколько товаров в корзину.
-3. Создать адрес в `My places`.
-4. Открыть `Checkout`, выбрать адрес и оформить заказ.
-5. Проверить историю в `Orders`.
+## Сквозные сценарии
+Регистрация и заказ:
+1. Зарегистрируйтесь.
+2. Откройте ссылку подтверждения email из логов `api`.
+3. Войдите в аккаунт.
+4. Добавьте товары в корзину.
+5. Создайте адрес в `My places`.
+6. Откройте `Checkout` и оформите заказ.
+7. Проверьте заказ в `Orders`.
+
+Восстановление пароля:
+1. Откройте `/forgot-password`.
+2. Запросите ссылку восстановления.
+3. Откройте ссылку из логов `api`.
+4. Установите новый пароль на `/reset-password`.
+5. Войдите с новым паролем.
 
 ## Частые проблемы
-- `404` на `api/api/v1/...`: проверьте, что `VITE_API_BASE_URL=/api`, а запросы в коде идут на `/v1/...`.
-- `400` на `POST /api/v1/auth/register`: пароль должен быть длиной `8-72`, содержать минимум одну латинскую букву и одну цифру; `email` должен быть уникальным.
-- `404` или `500` на корзине/заказах после обновления кода: примените миграции `goose up`, чтобы в БД появились таблицы из `00005_cart_orders.sql`.
-- `css2 ... ERR_TIMED_OUT`: проблема с внешними шрифтами/сетью/кэшем браузера; сделайте hard refresh (`Ctrl+F5`) и перезапустите frontend.
+- `404` на `api/api/v1/...`: `VITE_API_BASE_URL` должен быть `/api`, а frontend должен ходить на `/v1/...`
+- `400` на `POST /api/v1/auth/register`: пароль должен быть длиной `8-72`, содержать минимум одну латинскую букву и одну цифру; `email` должен быть уникальным
+- `400` на `POST /api/v1/auth/verify-email/confirm` или `POST /api/v1/auth/password-reset/confirm`: ссылка истекла, уже использована или повреждена; запросите новую
+- `404` или `500` на корзине/заказах после обновления схемы: примените `goose up`, чтобы в БД были миграции `00005_cart_orders.sql` и `00006_auth_email_flows.sql`
+- письмо "не пришло": для локальной разработки письмо пишется в `docker compose logs -f api`
+- `css2 ... ERR_TIMED_OUT`: проблема сети/кэша браузера, сделайте hard reload
 
 ## Полезные команды
-Из корня репозитория:
 - `powershell -ExecutionPolicy Bypass -File scripts/dev-all.ps1`
 - `powershell -ExecutionPolicy Bypass -File scripts/dev-backend.ps1`
 - `powershell -ExecutionPolicy Bypass -File scripts/dev-frontend.ps1`
+- `docker compose logs -f api`
 - `go test ./...`
 
 ## Лицензия

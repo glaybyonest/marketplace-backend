@@ -8,13 +8,15 @@ import (
 
 // User is a registered account.
 type User struct {
-	ID           uuid.UUID `json:"id"`
-	Email        string    `json:"email"`
-	PasswordHash string    `json:"-"`
-	FullName     string    `json:"full_name,omitempty"`
-	CreatedAt    time.Time `json:"created_at"`
-	UpdatedAt    time.Time `json:"updated_at"`
-	IsActive     bool      `json:"is_active"`
+	ID              uuid.UUID  `json:"id"`
+	Email           string     `json:"email"`
+	PasswordHash    string     `json:"-"`
+	FullName        string     `json:"full_name,omitempty"`
+	CreatedAt       time.Time  `json:"created_at"`
+	UpdatedAt       time.Time  `json:"updated_at"`
+	IsActive        bool       `json:"is_active"`
+	EmailVerifiedAt *time.Time `json:"email_verified_at,omitempty"`
+	IsEmailVerified bool       `json:"is_email_verified"`
 }
 
 // UserSession stores refresh token metadata.
@@ -36,4 +38,28 @@ type TokenPair struct {
 	RefreshToken string `json:"refresh_token"`
 	TokenType    string `json:"token_type"`
 	ExpiresIn    int64  `json:"expires_in"`
+}
+
+type AuthResult struct {
+	User                      User       `json:"user"`
+	Tokens                    *TokenPair `json:"tokens,omitempty"`
+	RequiresEmailVerification bool       `json:"requires_email_verification"`
+	Message                   string     `json:"message,omitempty"`
+}
+
+type AuthActionPurpose string
+
+const (
+	AuthActionVerifyEmail   AuthActionPurpose = "verify_email"
+	AuthActionResetPassword AuthActionPurpose = "reset_password"
+)
+
+type AuthActionToken struct {
+	ID         uuid.UUID         `json:"id"`
+	UserID     uuid.UUID         `json:"user_id"`
+	Purpose    AuthActionPurpose `json:"purpose"`
+	TokenHash  string            `json:"-"`
+	ExpiresAt  time.Time         `json:"expires_at"`
+	CreatedAt  time.Time         `json:"created_at"`
+	ConsumedAt *time.Time        `json:"consumed_at,omitempty"`
 }

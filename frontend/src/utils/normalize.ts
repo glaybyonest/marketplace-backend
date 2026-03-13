@@ -37,12 +37,19 @@ export const normalizeUser = (input: unknown): User => {
   const source = asRecord(input)
   const email = pickString(source.email)
   const fullName = pickString(source.full_name, pickString(source.fullName, pickString(source.name)))
+  const emailVerifiedAt = pickString(source.email_verified_at, pickString(source.emailVerifiedAt))
+  const isEmailVerified =
+    source.is_email_verified === undefined
+      ? emailVerifiedAt.length > 0
+      : Boolean(source.is_email_verified)
 
   return {
     id: pickString(source.id, pickString(source._id, createId())),
     email,
     fullName,
     isActive: source.is_active === undefined ? true : Boolean(source.is_active),
+    emailVerifiedAt: emailVerifiedAt || undefined,
+    isEmailVerified,
     name: fullName || 'User',
     role: ensureRole(source.role, Boolean(email)),
     isBlocked: Boolean(source.isBlocked),

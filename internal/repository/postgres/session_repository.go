@@ -128,6 +128,15 @@ func (r *SessionRepository) RevokeByRefreshTokenHash(
 	return cmd.RowsAffected() > 0, nil
 }
 
+func (r *SessionRepository) RevokeAllByUserID(ctx context.Context, userID uuid.UUID, revokedAt time.Time) error {
+	_, err := r.db.Exec(ctx, `
+		UPDATE user_sessions
+		SET revoked_at = $2
+		WHERE user_id = $1 AND revoked_at IS NULL
+	`, userID, revokedAt)
+	return mapError(err)
+}
+
 func nullIfEmpty(value string) any {
 	if value == "" {
 		return nil

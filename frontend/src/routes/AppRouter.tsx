@@ -5,6 +5,7 @@ import { AccountPage } from '@/pages/AccountPage'
 import { CartPage } from '@/pages/CartPage'
 import { CheckoutPage } from '@/pages/CheckoutPage'
 import { FavoritesPage } from '@/pages/FavoritesPage'
+import { ForgotPasswordPage } from '@/pages/ForgotPasswordPage'
 import { HomePage } from '@/pages/HomePage'
 import { LoginPage } from '@/pages/LoginPage'
 import { NotFoundPage } from '@/pages/NotFoundPage'
@@ -12,6 +13,8 @@ import { OrdersPage } from '@/pages/OrdersPage'
 import { PlacesPage } from '@/pages/PlacesPage'
 import { ProductPage } from '@/pages/ProductPage'
 import { RegisterPage } from '@/pages/RegisterPage'
+import { ResetPasswordPage } from '@/pages/ResetPasswordPage'
+import { VerifyEmailPage } from '@/pages/VerifyEmailPage'
 
 export const AppRouter = () => (
   <Routes>
@@ -19,6 +22,9 @@ export const AppRouter = () => (
     <Route path="/products/:id" element={<ProductPage />} />
     <Route path="/login" element={<LoginPage />} />
     <Route path="/register" element={<RegisterPage />} />
+    <Route path="/verify-email" element={<VerifyEmailPage />} />
+    <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+    <Route path="/reset-password" element={<ResetPasswordPage />} />
 
     <Route element={<ProtectedRoute />}>
       <Route path="/account" element={<AccountPage />} />

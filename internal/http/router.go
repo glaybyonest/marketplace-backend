@@ -55,6 +55,10 @@ func NewRouter(deps Dependencies) http.Handler {
 			r.Post("/register", authHandler.Register)
 			r.Post("/login", authHandler.Login)
 			r.Post("/refresh", authHandler.Refresh)
+			r.Post("/verify-email/request", authHandler.RequestEmailVerification)
+			r.Post("/verify-email/confirm", authHandler.ConfirmEmailVerification)
+			r.Post("/password-reset/request", authHandler.RequestPasswordReset)
+			r.Post("/password-reset/confirm", authHandler.ConfirmPasswordReset)
 
 			r.Group(func(r chi.Router) {
 				r.Use(authMiddleware.Handler)

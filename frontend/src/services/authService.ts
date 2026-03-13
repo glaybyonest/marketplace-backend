@@ -14,17 +14,28 @@ interface RegisterPayload extends Credentials {
   name: string
 }
 
+interface ActionAcceptedResponse {
+  accepted: boolean
+}
+
+interface VerifyEmailResult {
+  verified: boolean
+  user: User
+}
+
 const normalizeAuthResponse = (raw: unknown): AuthResponse<User> => {
   const source = (pickData<Record<string, unknown>>(raw) ?? {}) as Record<string, unknown>
   const tokens = (source.tokens ?? {}) as Record<string, unknown>
 
-  const token = (tokens.access_token ?? source.token ?? source.accessToken ?? '') as string
-  const refreshToken = (tokens.refresh_token ?? source.refreshToken ?? '') as string
-  const tokenType = (tokens.token_type ?? 'Bearer') as string
+  const token = typeof tokens.access_token === 'string' ? tokens.access_token : null
+  const refreshToken = typeof tokens.refresh_token === 'string' ? tokens.refresh_token : null
+  const tokenType = typeof tokens.token_type === 'string' ? tokens.token_type : null
   const expiresIn = Number(tokens.expires_in ?? 0) || 0
   const user = normalizeUser(source.user ?? source.profile ?? {})
+  const requiresEmailVerification = Boolean(source.requires_email_verification)
+  const message = typeof source.message === 'string' ? source.message : undefined
 
-  return { token, refreshToken, tokenType, expiresIn, user }
+  return { token, refreshToken, tokenType, expiresIn, user, requiresEmailVerification, message }
 }
 
 export const authService = {
@@ -42,6 +53,36 @@ export const authService = {
     return normalizeAuthResponse(response.data)
   },
 
+  async requestEmailVerification(email: string): Promise<ActionAcceptedResponse> {
+    const response = await apiClient.post('/v1/auth/verify-email/request', { email })
+    const source = (pickData<Record<string, unknown>>(response.data) ?? {}) as Record<string, unknown>
+    return { accepted: Boolean(source.accepted) }
+  },
+
+  async confirmEmailVerification(token: string): Promise<VerifyEmailResult> {
+    const response = await apiClient.post('/v1/auth/verify-email/confirm', { token })
+    const source = (pickData<Record<string, unknown>>(response.data) ?? {}) as Record<string, unknown>
+    return {
+      verified: Boolean(source.verified),
+      user: normalizeUser(source.user ?? {}),
+    }
+  },
+
+  async requestPasswordReset(email: string): Promise<ActionAcceptedResponse> {
+    const response = await apiClient.post('/v1/auth/password-reset/request', { email })
+    const source = (pickData<Record<string, unknown>>(response.data) ?? {}) as Record<string, unknown>
+    return { accepted: Boolean(source.accepted) }
+  },
+
+  async confirmPasswordReset(token: string, newPassword: string): Promise<boolean> {
+    const response = await apiClient.post('/v1/auth/password-reset/confirm', {
+      token,
+      new_password: newPassword,
+    })
+    const source = (pickData<Record<string, unknown>>(response.data) ?? {}) as Record<string, unknown>
+    return Boolean(source.password_reset)
+  },
+
   async logout(): Promise<void> {
     const refreshToken = storage.getRefreshToken()
     if (!refreshToken) {
@@ -53,4 +94,3 @@ export const authService = {
     })
   },
 }
-

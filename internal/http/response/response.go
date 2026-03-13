@@ -44,8 +44,12 @@ func FromDomainError(w http.ResponseWriter, err error) {
 		Error(w, http.StatusBadRequest, "cart_empty", "cart is empty", nil)
 	case errors.Is(err, domain.ErrUnauthorized):
 		Error(w, http.StatusUnauthorized, "unauthorized", "unauthorized", nil)
+	case errors.Is(err, domain.ErrInvalidToken):
+		Error(w, http.StatusBadRequest, "invalid_token", "invalid or expired token", nil)
 	case errors.Is(err, domain.ErrInactiveUser):
 		Error(w, http.StatusForbidden, "inactive_user", "user is inactive", nil)
+	case errors.Is(err, domain.ErrEmailNotVerified):
+		Error(w, http.StatusForbidden, "email_not_verified", "email is not verified", nil)
 	case errors.Is(err, domain.ErrForbidden):
 		Error(w, http.StatusForbidden, "forbidden", "forbidden", nil)
 	case errors.Is(err, domain.ErrStockShortage):

@@ -14,11 +14,13 @@ export interface PaginatedResponse<T> {
 }
 
 export interface AuthResponse<TUser> {
-  token: string
-  refreshToken: string
-  tokenType: string
+  token: string | null
+  refreshToken: string | null
+  tokenType: string | null
   expiresIn: number
   user: TUser
+  requiresEmailVerification: boolean
+  message?: string
 }
 
 export type ProductSort = 'new' | 'price_asc' | 'price_desc'

@@ -8,6 +8,11 @@ import { loginThunk } from '@/store/slices/authSlice'
 
 import styles from '@/pages/AuthPage.module.scss'
 
+interface LocationState {
+  from?: string
+  message?: string
+}
+
 export const LoginPage = () => {
   const dispatch = useAppDispatch()
   const navigate = useNavigate()
@@ -17,7 +22,11 @@ export const LoginPage = () => {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
 
-  const from = (location.state as { from?: string } | null)?.from ?? '/'
+  const locationState = (location.state as LocationState | null) ?? null
+  const from = locationState?.from ?? '/'
+  const pageMessage = locationState?.message ?? authState.notice
+  const verificationLink =
+    email.trim().length > 0 ? `/verify-email?email=${encodeURIComponent(email.trim())}` : '/verify-email'
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault()
@@ -31,8 +40,11 @@ export const LoginPage = () => {
   return (
     <div className={styles.page}>
       <section className={styles.card}>
-        <h1>????</h1>
-        <p>???????, ????? ???????? ? ?????????, ???????? ? ????????.</p>
+        <h1>Sign in</h1>
+        <p>Use your email and password to access your account.</p>
+
+        {pageMessage ? <div className={styles.notice}>{pageMessage}</div> : null}
+
         <form className={styles.form} onSubmit={handleSubmit}>
           <label>
             Email
@@ -47,7 +59,7 @@ export const LoginPage = () => {
             />
           </label>
           <label>
-            ??????
+            Password
             <input
               type="password"
               value={password}
@@ -56,14 +68,26 @@ export const LoginPage = () => {
               required
             />
           </label>
+
           {authState.error ? <ErrorMessage message={authState.error} /> : null}
+
+          {authState.errorCode === 'email_not_verified' ? (
+            <p className={styles.inlineInfo}>
+              Need a fresh verification link? <Link to={verificationLink}>Resend email</Link>
+            </p>
+          ) : null}
+
           <button type="submit" disabled={authState.status === 'loading'}>
-            {authState.status === 'loading' ? '??????...' : '?????'}
+            {authState.status === 'loading' ? 'Signing in...' : 'Sign in'}
           </button>
         </form>
-        <p>
-          ??? ????????? <Link to="/register">??????????????????</Link>
-        </p>
+
+        <div className={styles.links}>
+          <Link to="/forgot-password">Forgot password?</Link>
+          <span>
+            No account yet? <Link to="/register">Create one</Link>
+          </span>
+        </div>
       </section>
     </div>
   )

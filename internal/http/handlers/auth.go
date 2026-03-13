@@ -15,11 +15,15 @@ import (
 )
 
 type AuthService interface {
-	Register(ctx context.Context, input usecase.RegisterInput) (domain.User, domain.TokenPair, error)
-	Login(ctx context.Context, input usecase.LoginInput) (domain.User, domain.TokenPair, error)
+	Register(ctx context.Context, input usecase.RegisterInput) (domain.AuthResult, error)
+	Login(ctx context.Context, input usecase.LoginInput) (domain.AuthResult, error)
 	Refresh(ctx context.Context, input usecase.RefreshInput) (domain.TokenPair, error)
 	Logout(ctx context.Context, input usecase.LogoutInput) error
 	Me(ctx context.Context, userID uuid.UUID) (domain.User, error)
+	RequestEmailVerification(ctx context.Context, input usecase.VerifyEmailRequestInput) error
+	ConfirmEmailVerification(ctx context.Context, input usecase.VerifyEmailConfirmInput) (domain.User, error)
+	RequestPasswordReset(ctx context.Context, input usecase.PasswordResetRequestInput) error
+	ConfirmPasswordReset(ctx context.Context, input usecase.PasswordResetConfirmInput) error
 }
 
 type AuthHandler struct {
@@ -41,7 +45,7 @@ func (h *AuthHandler) Register(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	user, tokens, err := h.service.Register(r.Context(), usecase.RegisterInput{
+	result, err := h.service.Register(r.Context(), usecase.RegisterInput{
 		Email:     req.Email,
 		Password:  req.Password,
 		FullName:  req.FullName,
@@ -53,10 +57,7 @@ func (h *AuthHandler) Register(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	response.JSON(w, http.StatusCreated, map[string]any{
-		"user":   user,
-		"tokens": tokens,
-	})
+	response.JSON(w, http.StatusCreated, result)
 }
 
 func (h *AuthHandler) Login(w http.ResponseWriter, r *http.Request) {
@@ -66,7 +67,7 @@ func (h *AuthHandler) Login(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	user, tokens, err := h.service.Login(r.Context(), usecase.LoginInput{
+	result, err := h.service.Login(r.Context(), usecase.LoginInput{
 		Email:     req.Email,
 		Password:  req.Password,
 		UserAgent: r.UserAgent(),
@@ -77,10 +78,7 @@ func (h *AuthHandler) Login(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	response.JSON(w, http.StatusOK, map[string]any{
-		"user":   user,
-		"tokens": tokens,
-	})
+	response.JSON(w, http.StatusOK, result)
 }
 
 func (h *AuthHandler) Refresh(w http.ResponseWriter, r *http.Request) {
@@ -141,4 +139,77 @@ func (h *AuthHandler) Me(w http.ResponseWriter, r *http.Request) {
 	}
 
 	response.JSON(w, http.StatusOK, user)
+}
+
+func (h *AuthHandler) RequestEmailVerification(w http.ResponseWriter, r *http.Request) {
+	var req dto.VerifyEmailRequest
+	if err := decodeAndValidate(r, &req, h.validate); err != nil {
+		writeDomainError(w, err)
+		return
+	}
+
+	if err := h.service.RequestEmailVerification(r.Context(), usecase.VerifyEmailRequestInput{
+		Email: req.Email,
+	}); err != nil {
+		writeDomainError(w, err)
+		return
+	}
+
+	response.JSON(w, http.StatusOK, map[string]bool{"accepted": true})
+}
+
+func (h *AuthHandler) ConfirmEmailVerification(w http.ResponseWriter, r *http.Request) {
+	var req dto.VerifyEmailConfirmRequest
+	if err := decodeAndValidate(r, &req, h.validate); err != nil {
+		writeDomainError(w, err)
+		return
+	}
+
+	user, err := h.service.ConfirmEmailVerification(r.Context(), usecase.VerifyEmailConfirmInput{
+		Token: req.Token,
+	})
+	if err != nil {
+		writeDomainError(w, err)
+		return
+	}
+
+	response.JSON(w, http.StatusOK, map[string]any{
+		"verified": true,
+		"user":     user,
+	})
+}
+
+func (h *AuthHandler) RequestPasswordReset(w http.ResponseWriter, r *http.Request) {
+	var req dto.PasswordResetRequest
+	if err := decodeAndValidate(r, &req, h.validate); err != nil {
+		writeDomainError(w, err)
+		return
+	}
+
+	if err := h.service.RequestPasswordReset(r.Context(), usecase.PasswordResetRequestInput{
+		Email: req.Email,
+	}); err != nil {
+		writeDomainError(w, err)
+		return
+	}
+
+	response.JSON(w, http.StatusOK, map[string]bool{"accepted": true})
+}
+
+func (h *AuthHandler) ConfirmPasswordReset(w http.ResponseWriter, r *http.Request) {
+	var req dto.PasswordResetConfirmRequest
+	if err := decodeAndValidate(r, &req, h.validate); err != nil {
+		writeDomainError(w, err)
+		return
+	}
+
+	if err := h.service.ConfirmPasswordReset(r.Context(), usecase.PasswordResetConfirmInput{
+		Token:       req.Token,
+		NewPassword: req.NewPassword,
+	}); err != nil {
+		writeDomainError(w, err)
+		return
+	}
+
+	response.JSON(w, http.StatusOK, map[string]bool{"password_reset": true})
 }

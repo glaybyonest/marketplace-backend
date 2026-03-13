@@ -23,11 +23,31 @@ export const getErrorMessage = (error: unknown, fallback = 'Request failed') => 
   const backendMessage = axiosError.response?.data?.error?.message
 
   if (backendCode === 'conflict') {
-    return 'Пользователь с таким email уже существует'
+    return 'A user with this email already exists'
   }
 
   if (backendCode === 'invalid_input') {
-    return 'Проверьте корректность введенных данных'
+    return 'Check the entered data and try again'
+  }
+
+  if (backendCode === 'unauthorized') {
+    return 'Invalid email or password'
+  }
+
+  if (backendCode === 'email_not_verified') {
+    return 'Verify your email before signing in'
+  }
+
+  if (backendCode === 'invalid_token') {
+    return 'This link is invalid or expired'
+  }
+
+  if (backendCode === 'inactive_user') {
+    return 'This account is inactive'
+  }
+
+  if (backendCode === 'session_closed') {
+    return 'Your session has expired. Sign in again'
   }
 
   if (backendCode === 'cart_empty') {
