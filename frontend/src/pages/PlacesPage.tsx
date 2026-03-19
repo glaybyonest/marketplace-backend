@@ -16,15 +16,11 @@ import styles from '@/pages/PlacesPage.module.scss'
 interface PlaceFormState {
   title: string
   addressText: string
-  lat: string
-  lon: string
 }
 
 const emptyForm: PlaceFormState = {
   title: '',
   addressText: '',
-  lat: '',
-  lon: '',
 }
 
 export const PlacesPage = () => {
@@ -46,8 +42,6 @@ export const PlacesPage = () => {
     const payload = {
       title: form.title.trim(),
       addressText: form.addressText.trim(),
-      lat: form.lat ? Number(form.lat) : undefined,
-      lon: form.lon ? Number(form.lon) : undefined,
     }
 
     if (!payload.title || !payload.addressText) {
@@ -74,8 +68,6 @@ export const PlacesPage = () => {
     setForm({
       title: place.title,
       addressText: place.addressText,
-      lat: place.lat === undefined ? '' : String(place.lat),
-      lon: place.lon === undefined ? '' : String(place.lon),
     })
   }
 
@@ -89,7 +81,7 @@ export const PlacesPage = () => {
         <div>
           <span className="badge-pill">Адреса</span>
           <h1>Места доставки</h1>
-          <p>Эти адреса используются на checkout и в верхней части витрины как предпочтительное место получения.</p>
+          <p>Эти адреса используются при оформлении заказа и в верхней части витрины как предпочтительное место получения.</p>
         </div>
       </header>
 
@@ -124,24 +116,6 @@ export const PlacesPage = () => {
                 required
               />
             </label>
-            <div className={styles.row}>
-              <label>
-                Широта
-                <input
-                  value={form.lat}
-                  onChange={(event) => setForm((prev) => ({ ...prev, lat: event.target.value }))}
-                  placeholder="55.75"
-                />
-              </label>
-              <label>
-                Долгота
-                <input
-                  value={form.lon}
-                  onChange={(event) => setForm((prev) => ({ ...prev, lon: event.target.value }))}
-                  placeholder="37.61"
-                />
-              </label>
-            </div>
             <div className={styles.actions}>
               <button type="submit" className="action-primary" disabled={mutationStatus === 'loading'}>
                 {editingId ? 'Сохранить адрес' : 'Добавить адрес'}
@@ -175,11 +149,6 @@ export const PlacesPage = () => {
               <div>
                 <h3>{place.title}</h3>
                 <p>{place.addressText}</p>
-                {place.lat !== undefined && place.lon !== undefined ? (
-                  <small>
-                    Координаты: {place.lat}, {place.lon}
-                  </small>
-                ) : null}
               </div>
               <div className={styles.actions}>
                 <button type="button" className="action-secondary" onClick={() => startEdit(place.id)}>

@@ -1,28 +1,31 @@
-import { startTransition, useEffect, useMemo, useState } from 'react'
+import { startTransition, useEffect, useMemo, useRef, useState } from 'react'
 import type { CSSProperties } from 'react'
 import { useSearchParams } from 'react-router-dom'
 
-import { campaignBanner, categoryVisuals, heroSlides, promoTiles, storyCards } from '@/config/storefront'
 import type { FilterValues } from '@/components/catalog/FilterPanel'
 import { FilterPanel } from '@/components/catalog/FilterPanel'
 import { ProductGrid } from '@/components/catalog/ProductGrid'
-import { SearchBar } from '@/components/catalog/SearchBar'
+import { CategoryIcon } from '@/components/common/CategoryIcon'
 import { ErrorMessage } from '@/components/common/ErrorMessage'
 import { productService } from '@/services/productService'
 import { useAppDispatch, useAppSelector } from '@/store/hooks'
 import { fetchCategoriesThunk } from '@/store/slices/categoriesSlice'
 import { fetchProductsThunk } from '@/store/slices/productsSlice'
 import { fetchRecommendationsThunk } from '@/store/slices/recommendationsSlice'
+import { defaultCategoryVisual, resolveCategoryVisual } from '@/utils/categoryIcons'
 import { filtersToSearchParams, searchParamsToFilters } from '@/utils/query'
 
 import styles from '@/pages/HomePage.module.scss'
 
+const CATALOG_PAGE_SIZE = 20
+
 export const HomePage = () => {
   const dispatch = useAppDispatch()
   const [searchParams, setSearchParams] = useSearchParams()
-  const [mobileFiltersOpen, setMobileFiltersOpen] = useState(false)
-  const [activeSlide, setActiveSlide] = useState(0)
+  const [filtersOpen, setFiltersOpen] = useState(false)
   const [popularQueries, setPopularQueries] = useState<string[]>([])
+  const filtersControlRef = useRef<HTMLDivElement | null>(null)
+  const catalogSectionRef = useRef<HTMLDivElement | null>(null)
 
   const auth = useAppSelector((state) => state.auth)
   const categories = useAppSelector((state) => state.categories.items)
@@ -39,7 +42,7 @@ export const HomePage = () => {
   }, [dispatch])
 
   useEffect(() => {
-    dispatch(fetchProductsThunk({ limit: 18, sort: 'new', ...filters }))
+    dispatch(fetchProductsThunk({ ...filters, sort: filters.sort ?? 'new', limit: CATALOG_PAGE_SIZE }))
   }, [dispatch, filters])
 
   useEffect(() => {
@@ -70,25 +73,37 @@ export const HomePage = () => {
   }, [])
 
   useEffect(() => {
-    if (hasActiveFilters) {
+    if (!filtersOpen) {
       return
     }
 
-    const interval = window.setInterval(() => {
-      setActiveSlide((current) => (current + 1) % heroSlides.length)
-    }, 6000)
+    const handlePointerDown = (event: MouseEvent) => {
+      if (filtersControlRef.current && !filtersControlRef.current.contains(event.target as Node)) {
+        setFiltersOpen(false)
+      }
+    }
 
-    return () => window.clearInterval(interval)
-  }, [hasActiveFilters])
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        setFiltersOpen(false)
+      }
+    }
 
-  const activeHero = heroSlides[activeSlide]
+    document.addEventListener('mousedown', handlePointerDown)
+    document.addEventListener('keydown', handleKeyDown)
+
+    return () => {
+      document.removeEventListener('mousedown', handlePointerDown)
+      document.removeEventListener('keydown', handleKeyDown)
+    }
+  }, [filtersOpen])
 
   const applyFilters = (values: FilterValues) => {
     const nextParams = filtersToSearchParams({
       ...filters,
       ...values,
       page: 1,
-      limit: 18,
+      limit: CATALOG_PAGE_SIZE,
     })
     startTransition(() => setSearchParams(nextParams))
   }
@@ -98,7 +113,7 @@ export const HomePage = () => {
       ...filters,
       q: query || undefined,
       page: 1,
-      limit: 18,
+      limit: CATALOG_PAGE_SIZE,
     })
     startTransition(() => setSearchParams(nextParams))
   }
@@ -108,13 +123,32 @@ export const HomePage = () => {
       ...filters,
       category_id: categoryId,
       page: 1,
-      limit: 18,
+      limit: CATALOG_PAGE_SIZE,
     })
     startTransition(() => setSearchParams(nextParams))
   }
 
   const handleReset = () => {
     startTransition(() => setSearchParams(new URLSearchParams()))
+  }
+
+  const scrollToCatalogSection = () => {
+    window.requestAnimationFrame(() => {
+      catalogSectionRef.current?.scrollIntoView({
+        behavior: 'smooth',
+        block: 'start',
+      })
+    })
+  }
+
+  const handleOpenAllProducts = () => {
+    handleReset()
+    scrollToCatalogSection()
+  }
+
+  const handlePageChange = (page: number) => {
+    startTransition(() => setSearchParams(filtersToSearchParams({ ...filters, page, limit: CATALOG_PAGE_SIZE })))
+    scrollToCatalogSection()
   }
 
   const currentPage = filters.page ?? 1
@@ -138,7 +172,7 @@ export const HomePage = () => {
           key={i}
           type="button"
           className={`${styles.paginationBtn} ${i === currentPage ? styles.paginationBtnActive : ''}`}
-          onClick={() => setSearchParams(filtersToSearchParams({ ...filters, page: i, limit: 18 }))}
+          onClick={() => handlePageChange(i)}
         >
           {i}
         </button>,
@@ -158,128 +192,27 @@ export const HomePage = () => {
 
   const shelves = useMemo(() => {
     const items = productsState.items
+    const fallbackRecommended = items.slice(4, 8)
+
     return {
-      fast: items.slice(0, 6),
-      recommended: recommendations.slice(0, 6),
+      fast: items.slice(0, 4),
+      recommended: (recommendations.length > 0 ? recommendations : fallbackRecommended).slice(0, 4),
     }
   }, [productsState.items, recommendations])
 
   const selectedCategory = categories.find((category) => category.id === filters.category_id)
-  const heroStyle = {
-    '--tone-from': activeHero.toneFrom,
-    '--tone-to': activeHero.toneTo,
-    '--tone-accent': activeHero.accent,
-  } as CSSProperties
-
-  const openConfiguredLink = (categorySlug?: string, query?: string) => {
-    const matchedCategory = categories.find((category) => category.slug === categorySlug)
-    const nextParams = filtersToSearchParams({
-      q: query || undefined,
-      category_id: matchedCategory?.id,
-      page: 1,
-      limit: 18,
-      sort: 'new',
-    })
-    startTransition(() => setSearchParams(nextParams))
-  }
 
   return (
     <div className={styles.page}>
       {!hasActiveFilters ? (
         <>
-          <section className={styles.heroLayout}>
-            <article className={styles.heroCard} style={heroStyle}>
-              <div className={styles.heroCopy}>
-                <span className={styles.heroBadge}>{activeHero.badge}</span>
-                <h1 className={styles.heroTitle}>{activeHero.title}</h1>
-                <p className={styles.heroSub}>{activeHero.description}</p>
-                <div className={styles.heroSearch}>
-                  <SearchBar
-                    initialValue={filters.q ?? ''}
-                    onSearch={handleSearch}
-                    variant="hero"
-                    placeholder="Найти товар, категорию или бренд"
-                    submitLabel="Искать"
-                  />
-                </div>
-                <div className={styles.heroActions}>
-                  <button type="button" className="action-primary" onClick={() => openConfiguredLink(activeHero.categorySlug, activeHero.query)}>
-                    {activeHero.ctaLabel}
-                  </button>
-                  <span className={styles.heroStat}>{activeHero.stat}</span>
-                </div>
-                {popularQueries.length > 0 ? (
-                  <div className={styles.heroChips}>
-                    {popularQueries.map((query) => (
-                      <button key={query} type="button" className={styles.heroChip} onClick={() => handleSearch(query)}>
-                        {query}
-                      </button>
-                    ))}
-                  </div>
-                ) : null}
-              </div>
-              <div className={styles.heroVisual}>
-                <div className={styles.heroOrb} />
-                <div className={styles.heroPanel}>
-                  <span>Каталог</span>
-                  <strong>Поиск и подборки</strong>
-                </div>
-                <div className={styles.heroPanelAlt}>
-                  <span>Checkout</span>
-                  <strong>Адреса, корзина, заказы</strong>
-                </div>
-              </div>
-            </article>
-
-            <aside className={styles.promoColumn}>
-              {promoTiles.map((tile) => (
-                <button
-                  key={tile.id}
-                  type="button"
-                  className={styles.promoTile}
-                  style={{ '--tone-from': tile.toneFrom, '--tone-to': tile.toneTo } as CSSProperties}
-                  onClick={() => openConfiguredLink(tile.categorySlug, tile.query)}
-                >
-                  <div>
-                    <strong>{tile.title}</strong>
-                    <p>{tile.description}</p>
-                  </div>
-                  <span>{tile.ctaLabel}</span>
-                </button>
-              ))}
-            </aside>
-          </section>
-
-          <section className={styles.storyStrip}>
-            <div className={styles.sectionHeading}>
-              <div>
-                <span className={styles.sectionKicker}>Витрина</span>
-                <h2>Истории и сервисы</h2>
-              </div>
-            </div>
-
-            <div className={styles.storyGrid}>
-              {storyCards.map((story) => (
-                <article
-                  key={story.id}
-                  className={styles.storyCard}
-                  style={{ '--tone-from': story.toneFrom, '--tone-to': story.toneTo } as CSSProperties}
-                >
-                  <strong>{story.title}</strong>
-                  <p>{story.subtitle}</p>
-                  <span>{story.note}</span>
-                </article>
-              ))}
-            </div>
-          </section>
-
           <section className={styles.shelfSection}>
             <div className={styles.sectionHeading}>
               <div>
                 <span className={styles.sectionKicker}>Под рукой</span>
                 <h2>Категории каталога</h2>
               </div>
-              <button type="button" className="action-secondary" onClick={handleReset}>
+              <button type="button" className="action-secondary" onClick={handleOpenAllProducts}>
                 Весь каталог
               </button>
             </div>
@@ -288,13 +221,14 @@ export const HomePage = () => {
               <button
                 type="button"
                 className={`${styles.categoryCard} ${!filters.category_id ? styles.categoryCardActive : ''}`}
+                style={{ '--category-accent': defaultCategoryVisual.accent } as CSSProperties}
                 onClick={() => handleCategoryClick(undefined)}
               >
-                <span className={styles.categoryIcon}>ВС</span>
+                <CategoryIcon iconKey={defaultCategoryVisual.iconKey} accent={defaultCategoryVisual.accent} className={styles.categoryIcon} />
                 <span className={styles.categoryName}>Все товары</span>
               </button>
               {categories.map((category) => {
-                const visual = categoryVisuals[category.slug ?? ''] ?? { icon: 'CT', accent: '#005bff' }
+                const visual = resolveCategoryVisual({ slug: category.slug, name: category.name })
                 return (
                   <button
                     key={category.id}
@@ -303,7 +237,7 @@ export const HomePage = () => {
                     style={{ '--category-accent': visual.accent } as CSSProperties}
                     onClick={() => handleCategoryClick(category.id)}
                   >
-                    <span className={styles.categoryIcon}>{visual.icon}</span>
+                    <CategoryIcon iconKey={visual.iconKey} accent={visual.accent} className={styles.categoryIcon} />
                     <span className={styles.categoryName}>{category.name}</span>
                   </button>
                 )
@@ -311,67 +245,63 @@ export const HomePage = () => {
             </div>
           </section>
 
-          {shelves.fast.length > 0 ? (
-            <section className={styles.shelfSection}>
-              <div className={styles.sectionHeading}>
-                <div>
-                  <span className={styles.sectionKicker}>Полка</span>
-                  <h2>Хиты недели</h2>
+          {shelves.fast.length > 0 || shelves.recommended.length > 0 ? (
+            <section className={styles.shelfSplit}>
+              <div className={styles.shelfPanel}>
+                <div className={styles.sectionHeading}>
+                  <div>
+                    <span className={styles.sectionKicker}>Популярное</span>
+                    <h2>Хиты недели</h2>
+                  </div>
                 </div>
-                <p>Плотная карточная сетка как у крупного маркетплейса, но поверх вашего каталога.</p>
+                <ProductGrid products={shelves.fast} />
               </div>
-              <ProductGrid products={shelves.fast} />
+
+              <div className={styles.shelfPanel}>
+                <div className={styles.sectionHeading}>
+                  <div>
+                    <span className={styles.sectionKicker}>Персонально</span>
+                    <h2>Рекомендуем вам</h2>
+                  </div>
+                </div>
+                <ProductGrid products={shelves.recommended} />
+              </div>
             </section>
           ) : null}
 
-          {shelves.recommended.length > 0 ? (
-            <section className={styles.shelfSection}>
-              <div className={styles.sectionHeading}>
-                <div>
-                  <span className={styles.sectionKicker}>Персонально</span>
-                  <h2>Рекомендуем вам</h2>
-                </div>
-              </div>
-              <ProductGrid products={shelves.recommended} />
-            </section>
-          ) : null}
-
-          <section className={styles.campaignBanner}>
-            <div>
-              <span className={styles.sectionKicker}>Без изменений API</span>
-              <h2>{campaignBanner.title}</h2>
-              <p>{campaignBanner.description}</p>
-            </div>
-            <button type="button" className="action-primary" onClick={handleReset}>
-              Открыть каталог
-            </button>
-          </section>
         </>
       ) : null}
 
-      <div className={styles.heading}>
+      <div className={styles.heading} ref={catalogSectionRef}>
         <div>
           <span className={styles.sectionKicker}>Каталог</span>
           <h2>{selectedCategory?.name ?? (filters.q ? `Результаты по запросу «${filters.q}»` : 'Все товары')}</h2>
-          <p className={styles.sub}>Фильтры, сортировка, поиск и карточки товара используют существующий backend-контур.</p>
         </div>
-        <button type="button" className="action-secondary" onClick={() => setMobileFiltersOpen(true)}>
-          Фильтры
-        </button>
+        <div className={styles.filtersControl} ref={filtersControlRef}>
+          <button
+            type="button"
+            className={`action-secondary ${styles.filterButton} ${filtersOpen ? styles.filterButtonActive : ''}`}
+            onClick={() => setFiltersOpen((value) => !value)}
+            aria-expanded={filtersOpen}
+            aria-controls="catalog-filters"
+          >
+            {filtersOpen ? 'Скрыть фильтры' : 'Фильтры'}
+          </button>
+          <div className={styles.filtersDropdown}>
+            <FilterPanel
+              categories={categories}
+              values={filterValues}
+              onChange={applyFilters}
+              onReset={handleReset}
+              open={filtersOpen}
+              onClose={() => setFiltersOpen(false)}
+              panelId="catalog-filters"
+            />
+          </div>
+        </div>
       </div>
 
       <div className={styles.layout}>
-        <aside className={styles.filters}>
-          <FilterPanel
-            categories={categories}
-            values={filterValues}
-            onChange={applyFilters}
-            onReset={handleReset}
-            mobileOpen={mobileFiltersOpen}
-            onCloseMobile={() => setMobileFiltersOpen(false)}
-          />
-        </aside>
-
         <section className={styles.catalog}>
           {popularQueries.length > 0 ? (
             <div className={styles.popularStrip}>
@@ -400,7 +330,7 @@ export const HomePage = () => {
                 type="button"
                 className={styles.paginationBtn}
                 disabled={currentPage <= 1}
-                onClick={() => setSearchParams(filtersToSearchParams({ ...filters, page: prevPage, limit: 18 }))}
+                onClick={() => handlePageChange(prevPage)}
               >
                 Назад
               </button>
@@ -412,7 +342,7 @@ export const HomePage = () => {
                 type="button"
                 className={styles.paginationBtn}
                 disabled={currentPage >= productsState.totalPages}
-                onClick={() => setSearchParams(filtersToSearchParams({ ...filters, page: nextPage, limit: 18 }))}
+                onClick={() => handlePageChange(nextPage)}
               >
                 Дальше
               </button>

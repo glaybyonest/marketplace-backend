@@ -32,6 +32,8 @@ tags:
     description: Saved user addresses
   - name: Orders
     description: Checkout and order history
+  - name: Seller
+    description: Seller profile, dashboard, catalog, and order summary
   - name: Recommendations
     description: Personalized product recommendations
   - name: Admin
@@ -555,9 +557,9 @@ paths:
                 default:
                   value:
                     data:
-                      - text: cement
+                      - text: wireless headphones
                         kind: product
-                      - text: cement plaster
+                      - text: smart lamp
                         kind: query
         '500':
           $ref: '#/components/responses/InternalErrorResponse'
@@ -1103,6 +1105,274 @@ paths:
           $ref: '#/components/responses/UnauthorizedResponse'
         '500':
           $ref: '#/components/responses/InternalErrorResponse'
+  /api/v1/seller/profile:
+    get:
+      tags: [Seller]
+      operationId: getSellerProfile
+      summary: Get the current seller profile
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Seller profile data
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SellerProfileEnvelope'
+        '401':
+          $ref: '#/components/responses/UnauthorizedResponse'
+        '404':
+          $ref: '#/components/responses/NotFoundResponse'
+        '500':
+          $ref: '#/components/responses/InternalErrorResponse'
+    put:
+      tags: [Seller]
+      operationId: upsertSellerProfile
+      summary: Create or update the seller profile for the current user
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SellerProfileUpsertRequest'
+      responses:
+        '200':
+          description: Seller profile saved
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SellerProfileEnvelope'
+        '400':
+          $ref: '#/components/responses/InvalidInputResponse'
+        '401':
+          $ref: '#/components/responses/UnauthorizedResponse'
+        '500':
+          $ref: '#/components/responses/InternalErrorResponse'
+    patch:
+      tags: [Seller]
+      operationId: patchSellerProfile
+      summary: Update seller profile using the same payload as PUT
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SellerProfileUpsertRequest'
+      responses:
+        '200':
+          description: Seller profile saved
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SellerProfileEnvelope'
+        '400':
+          $ref: '#/components/responses/InvalidInputResponse'
+        '401':
+          $ref: '#/components/responses/UnauthorizedResponse'
+        '500':
+          $ref: '#/components/responses/InternalErrorResponse'
+  /api/v1/seller/dashboard:
+    get:
+      tags: [Seller]
+      operationId: sellerDashboard
+      summary: Get seller dashboard summary
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Seller dashboard
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SellerDashboardEnvelope'
+        '401':
+          $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/ForbiddenResponse'
+        '404':
+          $ref: '#/components/responses/NotFoundResponse'
+        '500':
+          $ref: '#/components/responses/InternalErrorResponse'
+  /api/v1/seller/products:
+    get:
+      tags: [Seller]
+      operationId: sellerListProducts
+      summary: List products that belong to the current seller
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/SearchQueryParam'
+        - $ref: '#/components/parameters/CategoryIDQueryParam'
+        - $ref: '#/components/parameters/MinPriceParam'
+        - $ref: '#/components/parameters/MaxPriceParam'
+        - $ref: '#/components/parameters/InStockParam'
+        - $ref: '#/components/parameters/SortParam'
+        - $ref: '#/components/parameters/PageParam'
+        - $ref: '#/components/parameters/LimitParam'
+      responses:
+        '200':
+          description: Paginated seller products
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProductPageEnvelope'
+        '400':
+          $ref: '#/components/responses/InvalidInputResponse'
+        '401':
+          $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/ForbiddenResponse'
+        '500':
+          $ref: '#/components/responses/InternalErrorResponse'
+    post:
+      tags: [Seller]
+      operationId: sellerCreateProduct
+      summary: Create a product owned by the current seller
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AdminProductUpsertRequest'
+      responses:
+        '201':
+          description: Product created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProductEnvelope'
+        '400':
+          $ref: '#/components/responses/InvalidInputResponse'
+        '401':
+          $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/ForbiddenResponse'
+        '404':
+          $ref: '#/components/responses/NotFoundResponse'
+        '409':
+          $ref: '#/components/responses/ConflictResponse'
+        '500':
+          $ref: '#/components/responses/InternalErrorResponse'
+  /api/v1/seller/products/{id}:
+    patch:
+      tags: [Seller]
+      operationId: sellerUpdateProduct
+      summary: Update a product owned by the current seller
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/ProductIDPathParam'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AdminProductUpsertRequest'
+      responses:
+        '200':
+          description: Product updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProductEnvelope'
+        '400':
+          $ref: '#/components/responses/InvalidInputResponse'
+        '401':
+          $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/ForbiddenResponse'
+        '404':
+          $ref: '#/components/responses/NotFoundResponse'
+        '409':
+          $ref: '#/components/responses/ConflictResponse'
+        '500':
+          $ref: '#/components/responses/InternalErrorResponse'
+    delete:
+      tags: [Seller]
+      operationId: sellerDeleteProduct
+      summary: Archive a product owned by the current seller
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/ProductIDPathParam'
+      responses:
+        '200':
+          description: Product archived
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DeleteProductEnvelope'
+        '400':
+          $ref: '#/components/responses/InvalidInputResponse'
+        '401':
+          $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/ForbiddenResponse'
+        '404':
+          $ref: '#/components/responses/NotFoundResponse'
+        '500':
+          $ref: '#/components/responses/InternalErrorResponse'
+  /api/v1/seller/products/{id}/stock:
+    patch:
+      tags: [Seller]
+      operationId: sellerUpdateProductStock
+      summary: Update stock for a seller-owned product
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/ProductIDPathParam'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AdminProductStockRequest'
+      responses:
+        '200':
+          description: Product stock updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProductEnvelope'
+        '400':
+          $ref: '#/components/responses/InvalidInputResponse'
+        '401':
+          $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/ForbiddenResponse'
+        '404':
+          $ref: '#/components/responses/NotFoundResponse'
+        '500':
+          $ref: '#/components/responses/InternalErrorResponse'
+  /api/v1/seller/orders:
+    get:
+      tags: [Seller]
+      operationId: sellerListOrders
+      summary: List seller-side order summaries
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/PageParam'
+        - $ref: '#/components/parameters/LimitParam'
+      responses:
+        '200':
+          description: Paginated seller order summaries
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SellerOrderPageEnvelope'
+        '401':
+          $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/ForbiddenResponse'
+        '500':
+          $ref: '#/components/responses/InternalErrorResponse'
   /api/v1/admin/categories:
     get:
       tags: [Admin]
@@ -1138,8 +1408,8 @@ paths:
             examples:
               root:
                 value:
-                  name: Dry Mixes
-                  slug: dry-mixes
+                  name: Electronics
+                  slug: electronics
       responses:
         '201':
           description: Category created
@@ -1265,23 +1535,23 @@ paths:
             examples:
               default:
                 value:
-                  category_id: 6b997cc0-e76e-4c2f-a0a4-79a9a407f2cc
-                  name: Portland Cement M500
-                  slug: portland-cement-m500
-                  description: Fast-setting cement for construction work.
-                  price: 495.5
+                  category_id: 11111111-1111-1111-1111-111111111111
+                  name: Смартфон
+                  slug: electronics-gadgets-smartfon
+                  description: Флагманский смартфон с OLED-экраном, 5G и быстрой зарядкой.
+                  price: 107600
                   currency: RUB
-                  sku: CEM-M500-25
-                  image_url: https://cdn.example.com/products/cement-1.jpg
+                  sku: EL-SMART-01
+                  image_url: marketplace-media://product/electronics-gadgets-smartfon/hero
                   images:
-                    - https://cdn.example.com/products/cement-1.jpg
-                    - https://cdn.example.com/products/cement-2.jpg
-                  brand: EuroCem
-                  unit: bag
+                    - marketplace-media://product/electronics-gadgets-smartfon/hero
+                    - marketplace-media://product/electronics-gadgets-smartfon/detail
+                  brand: UrbanWave
+                  unit: piece
                   specs:
-                    weight_kg: 25
-                    strength_class: M500
-                  stock_qty: 48
+                    warranty: 12 months
+                    segment: flagship assortment
+                  stock_qty: 36
                   is_active: true
       responses:
         '201':
@@ -1439,7 +1709,7 @@ components:
       required: false
       schema:
         type: string
-      example: cement
+      example: headphones
     CategoryIDQueryParam:
       name: category_id
       in: query
@@ -1936,7 +2206,7 @@ components:
           example: Ivan Petrov
         role:
           type: string
-          enum: [customer, admin]
+          enum: [customer, seller, admin]
           example: customer
         is_active:
           type: boolean
@@ -2119,10 +2389,10 @@ components:
           example: null
         name:
           type: string
-          example: Dry Mixes
+          example: Electronics
         slug:
           type: string
-          example: dry-mixes
+          example: electronics
         created_at:
           type: string
           format: date-time
@@ -2178,51 +2448,62 @@ components:
           example: 6b997cc0-e76e-4c2f-a0a4-79a9a407f2cc
         category_name:
           type: string
-          example: Dry Mixes
+          example: Электроника и гаджеты
         name:
           type: string
-          example: Portland Cement M500
+          example: Смартфон
         slug:
           type: string
-          example: portland-cement-m500
+          example: electronics-gadgets-smartfon
         description:
           type: string
-          example: Fast-setting cement for construction work.
+          example: Флагманский смартфон с OLED-экраном, 5G и быстрой зарядкой.
         price:
           type: number
           format: double
-          example: 495.5
+          example: 107600
         currency:
           type: string
           example: RUB
         sku:
           type: string
-          example: CEM-M500-25
+          example: EL-SMART-01
+        seller_id:
+          type: string
+          format: uuid
+          nullable: true
+          example: 70000000-0000-0000-0000-000000000001
+        seller_name:
+          type: string
+          example: UrbanWave
+        seller_slug:
+          type: string
+          example: urbanwave
         image_url:
           type: string
-          example: https://cdn.example.com/products/cement-1.jpg
+          example: marketplace-media://product/electronics-gadgets-smartfon/hero
         images:
           type: array
           items:
             type: string
           example:
-            - https://cdn.example.com/products/cement-1.jpg
-            - https://cdn.example.com/products/cement-2.jpg
+            - marketplace-media://product/electronics-gadgets-smartfon/hero
+            - marketplace-media://product/electronics-gadgets-smartfon/detail
         brand:
           type: string
-          example: EuroCem
+          example: UrbanWave
         unit:
           type: string
-          example: bag
+          example: piece
         specs:
           type: object
           additionalProperties: true
           example:
-            weight_kg: 25
-            strength_class: M500
+            battery_life: 40 h
+            wireless: Bluetooth 5.3
         stock_qty:
           type: integer
-          example: 48
+          example: 36
         is_active:
           type: boolean
           example: true
@@ -2277,7 +2558,7 @@ components:
       properties:
         text:
           type: string
-          example: cement
+          example: wireless headphones
         kind:
           type: string
           example: product
@@ -2287,7 +2568,7 @@ components:
       properties:
         query:
           type: string
-          example: cement
+          example: bluetooth speaker
         search_count:
           type: integer
           example: 125
@@ -2366,27 +2647,27 @@ components:
           example: 3a8b7c10-826a-4046-8b95-93a235e4e0a1
         name:
           type: string
-          example: Portland Cement M500
+          example: Смартфон
         slug:
           type: string
-          example: portland-cement-m500
+          example: electronics-gadgets-smartfon
         sku:
           type: string
-          example: CEM-M500-25
+          example: EL-SMART-01
         image_url:
           type: string
-          example: https://cdn.example.com/products/cement-1.jpg
+          example: marketplace-media://product/electronics-gadgets-smartfon/hero
         unit_price:
           type: number
           format: double
-          example: 495.5
+          example: 107600
         quantity:
           type: integer
-          example: 2
+          example: 1
         line_total:
           type: number
           format: double
-          example: 991
+          example: 11990
         currency:
           type: string
           example: RUB
@@ -2547,21 +2828,29 @@ components:
           example: 3a8b7c10-826a-4046-8b95-93a235e4e0a1
         product_name:
           type: string
-          example: Portland Cement M500
+          example: Смартфон
         sku:
           type: string
-          example: CEM-M500-25
+          example: EL-SMART-01
+        seller_id:
+          type: string
+          format: uuid
+          nullable: true
+          example: 70000000-0000-0000-0000-000000000001
+        seller_name:
+          type: string
+          example: UrbanWave
         unit_price:
           type: number
           format: double
-          example: 495.5
+          example: 11990
         quantity:
           type: integer
-          example: 2
+          example: 1
         line_total:
           type: number
           format: double
-          example: 991
+          example: 11990
         currency:
           type: string
           example: RUB
@@ -2654,6 +2943,209 @@ components:
       properties:
         data:
           $ref: '#/components/schemas/OrderPage'
+    SellerProfile:
+      type: object
+      required: [user_id, store_name, store_slug, status, created_at, updated_at]
+      properties:
+        user_id:
+          type: string
+          format: uuid
+          example: 70000000-0000-0000-0000-000000000001
+        store_name:
+          type: string
+          example: UrbanWave
+        store_slug:
+          type: string
+          example: urbanwave
+        legal_name:
+          type: string
+          example: UrbanWave Trading LLC
+        description:
+          type: string
+          example: Audio and lifestyle accessories with fast dispatch and city pickup.
+        logo_url:
+          type: string
+          example: https://cdn.example.com/stores/urbanwave-logo.jpg
+        banner_url:
+          type: string
+          example: https://cdn.example.com/stores/urbanwave-banner.jpg
+        support_email:
+          type: string
+          format: email
+          example: hello@urbanwave.example
+        support_phone:
+          type: string
+          example: +7 999 555-10-10
+        city:
+          type: string
+          example: Moscow
+        status:
+          type: string
+          enum: [pending, active, paused]
+          example: active
+        created_at:
+          type: string
+          format: date-time
+          example: '2026-03-18T09:00:00Z'
+        updated_at:
+          type: string
+          format: date-time
+          example: '2026-03-19T09:00:00Z'
+    SellerProfileEnvelope:
+      type: object
+      required: [data]
+      properties:
+        data:
+          $ref: '#/components/schemas/SellerProfile'
+    SellerProfileUpsertRequest:
+      type: object
+      required: [store_name]
+      properties:
+        store_name:
+          type: string
+          maxLength: 160
+          example: UrbanWave
+        store_slug:
+          type: string
+          maxLength: 160
+          example: urbanwave
+        legal_name:
+          type: string
+          maxLength: 200
+          example: UrbanWave Trading LLC
+        description:
+          type: string
+          maxLength: 2000
+          example: Audio and lifestyle accessories with fast dispatch and city pickup.
+        logo_url:
+          type: string
+          maxLength: 2048
+          example: https://cdn.example.com/stores/urbanwave-logo.jpg
+        banner_url:
+          type: string
+          maxLength: 2048
+          example: https://cdn.example.com/stores/urbanwave-banner.jpg
+        support_email:
+          type: string
+          format: email
+          maxLength: 254
+          example: hello@urbanwave.example
+        support_phone:
+          type: string
+          maxLength: 32
+          example: +7 999 555-10-10
+        city:
+          type: string
+          maxLength: 120
+          example: Moscow
+        status:
+          type: string
+          enum: [pending, active, paused]
+          example: active
+    SellerMetrics:
+      type: object
+      required: [products_total, active_products, hidden_products, low_stock_products, orders_total, units_sold, gross_revenue]
+      properties:
+        products_total:
+          type: integer
+          example: 18
+        active_products:
+          type: integer
+          example: 14
+        hidden_products:
+          type: integer
+          example: 4
+        low_stock_products:
+          type: integer
+          example: 3
+        orders_total:
+          type: integer
+          example: 27
+        units_sold:
+          type: integer
+          example: 63
+        gross_revenue:
+          type: number
+          format: double
+          example: 184950
+    SellerOrderSummary:
+      type: object
+      required: [order_id, status, currency, created_at, place_title, items_count, gross_revenue]
+      properties:
+        order_id:
+          type: string
+          format: uuid
+          example: 9ca2b8bc-f925-4df5-9880-34b310ae2f67
+        status:
+          type: string
+          enum: [pending, cancelled]
+          example: pending
+        currency:
+          type: string
+          example: RUB
+        created_at:
+          type: string
+          format: date-time
+          example: '2026-03-19T10:15:00Z'
+        place_title:
+          type: string
+          example: Home
+        items_count:
+          type: integer
+          example: 2
+        gross_revenue:
+          type: number
+          format: double
+          example: 21480
+    SellerOrderPage:
+      type: object
+      required: [items, page, limit, total]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/SellerOrderSummary'
+        page:
+          type: integer
+          example: 1
+        limit:
+          type: integer
+          example: 20
+        total:
+          type: integer
+          example: 9
+    SellerOrderPageEnvelope:
+      type: object
+      required: [data]
+      properties:
+        data:
+          $ref: '#/components/schemas/SellerOrderPage'
+    SellerDashboard:
+      type: object
+      required: [profile, metrics, recent_products, low_stock, recent_orders]
+      properties:
+        profile:
+          $ref: '#/components/schemas/SellerProfile'
+        metrics:
+          $ref: '#/components/schemas/SellerMetrics'
+        recent_products:
+          type: array
+          items:
+            $ref: '#/components/schemas/Product'
+        low_stock:
+          type: array
+          items:
+            $ref: '#/components/schemas/Product'
+        recent_orders:
+          type: array
+          items:
+            $ref: '#/components/schemas/SellerOrderSummary'
+    SellerDashboardEnvelope:
+      type: object
+      required: [data]
+      properties:
+        data:
+          $ref: '#/components/schemas/SellerDashboard'
     AdminCategoryUpsertRequest:
       type: object
       required: [name]
@@ -2666,11 +3158,11 @@ components:
         name:
           type: string
           maxLength: 120
-          example: Dry Mixes
+          example: Electronics
         slug:
           type: string
           maxLength: 120
-          example: dry-mixes
+          example: electronics
     AdminProductUpsertRequest:
       type: object
       required: [category_id, name, sku]
@@ -2682,20 +3174,20 @@ components:
         name:
           type: string
           maxLength: 180
-          example: Portland Cement M500
+          example: Смартфон
         slug:
           type: string
           maxLength: 180
-          example: portland-cement-m500
+          example: electronics-gadgets-smartfon
         description:
           type: string
           maxLength: 5000
-          example: Fast-setting cement for construction work.
+          example: Флагманский смартфон с OLED-экраном, 5G и быстрой зарядкой.
         price:
           type: number
           format: double
           minimum: 0
-          example: 495.5
+          example: 107600
         currency:
           type: string
           minLength: 3
@@ -2704,36 +3196,36 @@ components:
         sku:
           type: string
           maxLength: 120
-          example: CEM-M500-25
+          example: EL-SMART-01
         image_url:
           type: string
           maxLength: 2048
-          example: https://cdn.example.com/products/cement-1.jpg
+          example: marketplace-media://product/electronics-gadgets-smartfon/hero
         images:
           type: array
           items:
             type: string
           example:
-            - https://cdn.example.com/products/cement-1.jpg
-            - https://cdn.example.com/products/cement-2.jpg
+            - marketplace-media://product/electronics-gadgets-smartfon/hero
+            - marketplace-media://product/electronics-gadgets-smartfon/detail
         brand:
           type: string
           maxLength: 120
-          example: EuroCem
+          example: UrbanWave
         unit:
           type: string
           maxLength: 60
-          example: bag
+          example: piece
         specs:
           type: object
           additionalProperties: true
           example:
-            weight_kg: 25
-            strength_class: M500
+            battery_life: 40 h
+            wireless: Bluetooth 5.3
         stock_qty:
           type: integer
           minimum: 0
-          example: 48
+          example: 36
         is_active:
           type: boolean
           example: true

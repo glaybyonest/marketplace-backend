@@ -26,8 +26,8 @@ export const OrdersPage = () => {
       <header className={styles.header}>
         <div>
           <span className="badge-pill">Заказы</span>
-          <h1>История оформлений</h1>
-          <p>Все заказы, подтверждённые через checkout, появляются здесь с адресом доставки и составом корзины.</p>
+          <h1>История покупок</h1>
+          <p>Здесь собраны все оформленные заказы с адресом доставки, составом корзины и итоговой суммой.</p>
         </div>
       </header>
 
@@ -59,7 +59,10 @@ export const OrdersPage = () => {
               <ul className={styles.items}>
                 {order.items.map((item) => (
                   <li key={item.id}>
-                    <span>{item.title} x {item.quantity}</span>
+                    <span>
+                      {item.title} x {item.quantity}
+                      {item.sellerName ? ` • ${item.sellerName}` : ''}
+                    </span>
                     <strong>{formatCurrency(item.lineTotal, item.currency ?? order.currency)}</strong>
                   </li>
                 ))}

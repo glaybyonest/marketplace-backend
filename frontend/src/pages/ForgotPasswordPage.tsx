@@ -44,7 +44,7 @@ export const ForgotPasswordPage = () => {
           <span className={styles.showcaseBadge}>Восстановление</span>
           <h2 className={styles.showcaseTitle}>Восстановите доступ без поддержки и ручных действий</h2>
           <p className={styles.showcaseText}>
-            Сброс пароля работает поверх уже существующего backend-потока и не требует отдельного кабинета оператора.
+            Достаточно указать email, чтобы получить безопасную ссылку и быстро вернуть доступ к аккаунту.
           </p>
         </div>
 

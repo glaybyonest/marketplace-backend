@@ -38,16 +38,18 @@ const (
 )
 
 type OrderItem struct {
-	ID          uuid.UUID `json:"id"`
-	OrderID     uuid.UUID `json:"order_id"`
-	ProductID   uuid.UUID `json:"product_id"`
-	ProductName string    `json:"product_name"`
-	SKU         string    `json:"sku"`
-	UnitPrice   float64   `json:"unit_price"`
-	Quantity    int       `json:"quantity"`
-	LineTotal   float64   `json:"line_total"`
-	Currency    string    `json:"currency"`
-	CreatedAt   time.Time `json:"created_at"`
+	ID          uuid.UUID  `json:"id"`
+	OrderID     uuid.UUID  `json:"order_id"`
+	ProductID   uuid.UUID  `json:"product_id"`
+	ProductName string     `json:"product_name"`
+	SKU         string     `json:"sku"`
+	SellerID    *uuid.UUID `json:"seller_id,omitempty"`
+	SellerName  string     `json:"seller_name,omitempty"`
+	UnitPrice   float64    `json:"unit_price"`
+	Quantity    int        `json:"quantity"`
+	LineTotal   float64    `json:"line_total"`
+	Currency    string     `json:"currency"`
+	CreatedAt   time.Time  `json:"created_at"`
 }
 
 type Order struct {

@@ -9,7 +9,8 @@ import { productService } from '@/services/productService'
 import type { ProductFilters } from '@/types/api'
 import type { Category, Product } from '@/types/domain'
 import { getErrorMessage } from '@/utils/error'
-import { formatCurrency } from '@/utils/format'
+import { formatCurrency, formatUnitLabel } from '@/utils/format'
+import { isGeneratedMediaSource, resolveProductImage } from '@/utils/media'
 
 import styles from '@/pages/AdminPage.module.scss'
 
@@ -58,8 +59,8 @@ const productToFormState = (product: Product): ProductFormState => ({
   price: String(product.price),
   currency: product.currency ?? 'RUB',
   stockQty: String(product.stock ?? 0),
-  imageUrl: product.imageUrl ?? '',
-  imagesText: product.images.join('\n'),
+  imageUrl: isGeneratedMediaSource(product.imageUrl) ? '' : (product.imageUrl ?? ''),
+  imagesText: product.images.filter((image) => !isGeneratedMediaSource(image)).join('\n'),
   brand: product.brand ?? '',
   unit: product.unit ?? '',
   specsText: JSON.stringify(product.specs ?? {}, null, 2),
@@ -292,7 +293,7 @@ export const AdminProductsPage = () => {
       <section className={styles.contentGrid}>
         <article className={styles.panel}>
           <h2>{editingProduct ? 'Редактирование товара' : 'Новый товар'}</h2>
-          <p>Форма соответствует backend-модели: категория, цена, остаток, бренд, единица продажи, медиа и JSON-характеристики.</p>
+          <p>Заполните категорию, цену, остаток, бренд, единицу продажи, медиа и характеристики товара в одном месте.</p>
 
           <form className={styles.form} onSubmit={handleSubmit}>
             <div className={styles.fieldGrid}>
@@ -313,7 +314,7 @@ export const AdminProductsPage = () => {
                 />
               </label>
               <label>
-                SKU
+                Артикул
                 <input
                   value={formState.sku}
                   onChange={(event) => setFormState((current) => ({ ...current, sku: event.target.value }))}
@@ -381,13 +382,15 @@ export const AdminProductsPage = () => {
               </label>
               <label>
                 URL обложки
-                <input
-                  value={formState.imageUrl}
-                  onChange={(event) => setFormState((current) => ({ ...current, imageUrl: event.target.value }))}
-                  placeholder="https://..."
-                />
-              </label>
+                  <input
+                    value={formState.imageUrl}
+                    onChange={(event) => setFormState((current) => ({ ...current, imageUrl: event.target.value }))}
+                    placeholder="Оставьте пустым для локальной обложки"
+                  />
+                </label>
             </div>
+
+            <p className={styles.helperText}>Если изображение не указано, витрина создаст локальную обложку без внешних сервисов.</p>
 
             <label>
               Описание
@@ -450,7 +453,7 @@ export const AdminProductsPage = () => {
               <input
                 value={searchDraft}
                 onChange={(event) => setSearchDraft(event.target.value)}
-                placeholder="Поиск по названию, бренду, SKU..."
+                placeholder="Поиск по названию, бренду, артикулу..."
               />
               <select
                 value={filters.category_id ?? ''}
@@ -500,7 +503,7 @@ export const AdminProductsPage = () => {
                   <div className={styles.productCardTop}>
                     <img
                       className={styles.imageThumb}
-                      src={product.imageUrl || 'https://placehold.co/160x160/e5e7eb/6b7280?text=No+Image'}
+                      src={resolveProductImage(product)}
                       alt={product.title}
                     />
                     <div className={styles.stack}>
@@ -508,7 +511,7 @@ export const AdminProductsPage = () => {
                         <div>
                           <h3>{product.title}</h3>
                           <p className={styles.listMeta}>
-                            {categoryMap.get(product.categoryId) ?? 'Неизвестная категория'} • SKU {product.sku ?? '-'}
+                            {categoryMap.get(product.categoryId) ?? 'Неизвестная категория'} • Артикул {product.sku ?? '-'}
                           </p>
                         </div>
                         <div className={styles.badgeRow}>
@@ -522,7 +525,7 @@ export const AdminProductsPage = () => {
                       <div className={styles.productSummary}>
                         <p className={styles.muted}>
                           {product.brand ? `${product.brand} • ` : ''}
-                          {product.unit ? `${product.unit} • ` : ''}
+                          {product.unit ? `${formatUnitLabel(product.unit)} • ` : ''}
                           {formatCurrency(product.price, product.currency ?? 'RUB')}
                         </p>
                         <div className={styles.rowActions}>

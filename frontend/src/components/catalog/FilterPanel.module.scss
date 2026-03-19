@@ -3,11 +3,11 @@
 }
 
 .mobileOverlay {
+  display: none;
   position: fixed;
   inset: 0;
   z-index: var(--z-modal);
   background: rgb(13 28 65 / 0.38);
-  display: grid;
   place-items: start center;
   overflow-y: auto;
   padding: 16px;
@@ -227,6 +227,7 @@
   }
 
   .mobileOverlay {
+    display: grid;
     padding: 12px;
   }
 

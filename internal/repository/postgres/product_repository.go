@@ -22,6 +22,9 @@ const productSelectColumns = `
 		p.id,
 		p.category_id,
 		c.name,
+		COALESCE(p.seller_id::text, ''),
+		COALESCE(sp.store_name, ''),
+		COALESCE(sp.store_slug, ''),
 		p.name,
 		p.slug,
 		COALESCE(p.description, ''),
@@ -54,6 +57,10 @@ func (r *ProductRepository) List(ctx context.Context, filter domain.ProductFilte
 		args = append(args, *filter.CategoryID)
 		where = append(where, fmt.Sprintf("p.category_id = $%d", len(args)))
 	}
+	if filter.SellerID != nil {
+		args = append(args, *filter.SellerID)
+		where = append(where, fmt.Sprintf("p.seller_id = $%d", len(args)))
+	}
 	if filter.Query != "" {
 		args = append(args, "%"+strings.ToLower(filter.Query)+"%")
 		where = append(where, fmt.Sprintf(`(
@@ -62,8 +69,9 @@ func (r *ProductRepository) List(ctx context.Context, filter domain.ProductFilte
 			LOWER(COALESCE(p.brand, '')) LIKE $%d OR
 			LOWER(p.slug) LIKE $%d OR
 			LOWER(p.sku) LIKE $%d OR
-			LOWER(c.name) LIKE $%d
-		)`, len(args), len(args), len(args), len(args), len(args), len(args)))
+			LOWER(c.name) LIKE $%d OR
+			LOWER(COALESCE(sp.store_name, '')) LIKE $%d
+		)`, len(args), len(args), len(args), len(args), len(args), len(args), len(args)))
 	}
 	if filter.MinPrice != nil {
 		args = append(args, *filter.MinPrice)
@@ -89,7 +97,12 @@ func (r *ProductRepository) List(ctx context.Context, filter domain.ProductFilte
 	if len(where) > 0 {
 		condition = strings.Join(where, " AND ")
 	}
-	countSQL := "SELECT COUNT(*) FROM products p INNER JOIN categories c ON c.id = p.category_id WHERE " + condition
+	countSQL := `
+		SELECT COUNT(*)
+		FROM products p
+		INNER JOIN categories c ON c.id = p.category_id
+		LEFT JOIN seller_profiles sp ON sp.user_id = p.seller_id
+		WHERE ` + condition
 
 	var total int
 	if err := r.db.QueryRow(ctx, countSQL, args...).Scan(&total); err != nil {
@@ -115,6 +128,7 @@ func (r *ProductRepository) List(ctx context.Context, filter domain.ProductFilte
 		SELECT ` + productSelectColumns + `
 		FROM products p
 		INNER JOIN categories c ON c.id = p.category_id
+		LEFT JOIN seller_profiles sp ON sp.user_id = p.seller_id
 		WHERE ` + condition + `
 		ORDER BY ` + orderBy + `
 		LIMIT $` + fmt.Sprint(limitPos) + ` OFFSET $` + fmt.Sprint(offsetPos)
@@ -292,6 +306,7 @@ func (r *ProductRepository) Create(ctx context.Context, input usecase.ProductWri
 		WITH inserted AS (
 			INSERT INTO products (
 				category_id,
+				seller_id,
 				name,
 				slug,
 				description,
@@ -306,14 +321,15 @@ func (r *ProductRepository) Create(ctx context.Context, input usecase.ProductWri
 				stock_qty,
 				is_active
 			)
-			VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9::jsonb, $10, $11, $12::jsonb, $13, $14)
+			VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10::jsonb, $11, $12, $13::jsonb, $14, $15)
 			RETURNING id
 		)
 		SELECT `+productSelectColumns+`
 		FROM products p
 		INNER JOIN categories c ON c.id = p.category_id
+		LEFT JOIN seller_profiles sp ON sp.user_id = p.seller_id
 		WHERE p.id = (SELECT id FROM inserted)
-	`, input.CategoryID, input.Name, input.Slug, input.Description, input.Price, input.Currency, input.SKU, input.ImageURL, galleryRaw, input.Brand, input.Unit, specsRaw, input.StockQty, input.IsActive)
+	`, input.CategoryID, input.SellerID, input.Name, input.Slug, input.Description, input.Price, input.Currency, input.SKU, input.ImageURL, galleryRaw, input.Brand, input.Unit, specsRaw, input.StockQty, input.IsActive)
 
 	var product domain.Product
 	if err := scanProduct(row, &product); err != nil {
@@ -329,27 +345,33 @@ func (r *ProductRepository) Update(ctx context.Context, input usecase.ProductWri
 	}
 
 	row := r.db.QueryRow(ctx, `
-		UPDATE products p
-		SET
-			category_id = $2,
-			name = $3,
-			slug = $4,
-			description = $5,
-			price = $6,
-			currency = $7,
-			sku = $8,
-			image_url = $9,
-			gallery = $10::jsonb,
-			brand = $11,
-			unit = $12,
-			specs = $13::jsonb,
-			stock_qty = $14,
-			is_active = $15
-		FROM categories c
-		WHERE p.id = $1
-		  AND c.id = $2
-		RETURNING `+productSelectColumns+`
-	`, input.ID, input.CategoryID, input.Name, input.Slug, input.Description, input.Price, input.Currency, input.SKU, input.ImageURL, galleryRaw, input.Brand, input.Unit, specsRaw, input.StockQty, input.IsActive)
+		WITH updated AS (
+			UPDATE products p
+			SET
+				category_id = $2,
+				seller_id = $3,
+				name = $4,
+				slug = $5,
+				description = $6,
+				price = $7,
+				currency = $8,
+				sku = $9,
+				image_url = $10,
+				gallery = $11::jsonb,
+				brand = $12,
+				unit = $13,
+				specs = $14::jsonb,
+				stock_qty = $15,
+				is_active = $16
+			WHERE p.id = $1
+			RETURNING p.id
+		)
+		SELECT `+productSelectColumns+`
+		FROM products p
+		INNER JOIN categories c ON c.id = p.category_id
+		LEFT JOIN seller_profiles sp ON sp.user_id = p.seller_id
+		WHERE p.id = (SELECT id FROM updated)
+	`, input.ID, input.CategoryID, input.SellerID, input.Name, input.Slug, input.Description, input.Price, input.Currency, input.SKU, input.ImageURL, galleryRaw, input.Brand, input.Unit, specsRaw, input.StockQty, input.IsActive)
 
 	var product domain.Product
 	if err := scanProduct(row, &product); err != nil {
@@ -360,12 +382,17 @@ func (r *ProductRepository) Update(ctx context.Context, input usecase.ProductWri
 
 func (r *ProductRepository) SetActive(ctx context.Context, id uuid.UUID, isActive bool) (domain.Product, error) {
 	row := r.db.QueryRow(ctx, `
-		UPDATE products p
-		SET is_active = $2
-		FROM categories c
-		WHERE p.id = $1
-		  AND c.id = p.category_id
-		RETURNING `+productSelectColumns+`
+		WITH updated AS (
+			UPDATE products p
+			SET is_active = $2
+			WHERE p.id = $1
+			RETURNING p.id
+		)
+		SELECT `+productSelectColumns+`
+		FROM products p
+		INNER JOIN categories c ON c.id = p.category_id
+		LEFT JOIN seller_profiles sp ON sp.user_id = p.seller_id
+		WHERE p.id = (SELECT id FROM updated)
 	`, id, isActive)
 
 	var product domain.Product
@@ -377,12 +404,17 @@ func (r *ProductRepository) SetActive(ctx context.Context, id uuid.UUID, isActiv
 
 func (r *ProductRepository) UpdateStock(ctx context.Context, id uuid.UUID, stockQty int) (domain.Product, error) {
 	row := r.db.QueryRow(ctx, `
-		UPDATE products p
-		SET stock_qty = $2
-		FROM categories c
-		WHERE p.id = $1
-		  AND c.id = p.category_id
-		RETURNING `+productSelectColumns+`
+		WITH updated AS (
+			UPDATE products p
+			SET stock_qty = $2
+			WHERE p.id = $1
+			RETURNING p.id
+		)
+		SELECT `+productSelectColumns+`
+		FROM products p
+		INNER JOIN categories c ON c.id = p.category_id
+		LEFT JOIN seller_profiles sp ON sp.user_id = p.seller_id
+		WHERE p.id = (SELECT id FROM updated)
 	`, id, stockQty)
 
 	var product domain.Product
@@ -402,6 +434,7 @@ func (r *ProductRepository) getByCondition(ctx context.Context, condition string
 		SELECT `+productSelectColumns+`
 		FROM products p
 		INNER JOIN categories c ON c.id = p.category_id
+		LEFT JOIN seller_profiles sp ON sp.user_id = p.seller_id
 		WHERE `+where, arg)
 
 	var product domain.Product
@@ -414,11 +447,15 @@ func (r *ProductRepository) getByCondition(ctx context.Context, condition string
 func scanProduct(row pgx.Row, product *domain.Product) error {
 	var galleryRaw []byte
 	var specsRaw []byte
+	var sellerIDText string
 
 	err := row.Scan(
 		&product.ID,
 		&product.CategoryID,
 		&product.CategoryName,
+		&sellerIDText,
+		&product.SellerName,
+		&product.SellerSlug,
 		&product.Name,
 		&product.Slug,
 		&product.Description,
@@ -437,6 +474,16 @@ func scanProduct(row pgx.Row, product *domain.Product) error {
 	)
 	if err != nil {
 		return err
+	}
+
+	if sellerIDText != "" {
+		sellerID, err := uuid.Parse(sellerIDText)
+		if err != nil {
+			return fmt.Errorf("parse seller id: %w", err)
+		}
+		product.SellerID = &sellerID
+	} else {
+		product.SellerID = nil
 	}
 
 	images, err := decodeProductImages(product.ImageURL, galleryRaw)

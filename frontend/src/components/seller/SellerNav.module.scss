@@ -1,0 +1,31 @@
+.nav {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.link {
+  display: inline-flex;
+  align-items: center;
+  min-height: 42px;
+  padding: 0 16px;
+  border-radius: 999px;
+  border: 1px solid rgb(255 255 255 / 0.45);
+  background: rgb(255 255 255 / 0.26);
+  color: #f3f9f5;
+  font-size: 0.95rem;
+  font-weight: 700;
+  transition: background-color var(--transition-fast), border-color var(--transition-fast), color var(--transition-fast);
+}
+
+.link:hover {
+  color: #ffffff;
+  background: rgb(255 255 255 / 0.34);
+  border-color: rgb(255 255 255 / 0.62);
+}
+
+.active {
+  color: #0f473d;
+  background: #f4fff8;
+  border-color: #d3f0df;
+}

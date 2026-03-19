@@ -120,12 +120,12 @@ func TestCatalogService(t *testing.T) {
 		byID:       map[uuid.UUID]domain.Product{productID: {ID: productID, Slug: "product"}},
 		bySlug:     map[string]domain.Product{"product": {ID: productID, Slug: "product"}},
 		suggestions: []domain.SearchSuggestion{
-			{Text: "cement", Kind: "category"},
-			{Text: "cement m500", Kind: "product"},
+			{Text: "electronics", Kind: "category"},
+			{Text: "smartphone", Kind: "product"},
 		},
 		popular: []domain.PopularSearch{
-			{Query: "cement", SearchCount: 3},
-			{Query: "oak", SearchCount: 2},
+			{Query: "smartphone", SearchCount: 3},
+			{Query: "robot vacuum", SearchCount: 2},
 		},
 	}
 	events := &eventRepoMock{}
@@ -248,7 +248,7 @@ func TestCatalogService(t *testing.T) {
 	})
 
 	t.Run("search", func(t *testing.T) {
-		suggestions, err := service.SearchSuggestions(context.Background(), "  cement   m500 ", 10)
+		suggestions, err := service.SearchSuggestions(context.Background(), "  smartphone   case ", 10)
 		require.NoError(t, err)
 		require.Len(t, suggestions, 2)
 
@@ -256,9 +256,9 @@ func TestCatalogService(t *testing.T) {
 		require.NoError(t, err)
 		require.Len(t, popular, 2)
 
-		_, err = service.ListProducts(context.Background(), domain.ProductFilter{Query: "  Cement   M500 "})
+		_, err = service.ListProducts(context.Background(), domain.ProductFilter{Query: "  Smartphone   Case "})
 		require.NoError(t, err)
-		assert.Equal(t, "cement m500", products.lastTracked)
+		assert.Equal(t, "smartphone case", products.lastTracked)
 	})
 
 	t.Run("events", func(t *testing.T) {

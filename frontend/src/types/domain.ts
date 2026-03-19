@@ -42,6 +42,8 @@ export interface Product {
   name?: string
   slug?: string
   sku?: string
+  sellerName?: string
+  sellerSlug?: string
   description: string
   price: number
   currency?: string
@@ -97,6 +99,7 @@ export interface CartItem {
   title: string
   slug?: string
   sku?: string
+  sellerName?: string
   imageUrl?: string
   price: number
   quantity: number
@@ -135,4 +138,50 @@ export interface AdminStats {
   totalUsers: number
   totalProducts: number
   activeSellers: number
+}
+
+export type SellerStatus = 'pending' | 'active' | 'paused'
+
+export interface SellerProfile {
+  userId: string
+  storeName: string
+  storeSlug: string
+  legalName?: string
+  description?: string
+  logoUrl?: string
+  bannerUrl?: string
+  supportEmail?: string
+  supportPhone?: string
+  city?: string
+  status: SellerStatus
+  createdAt?: string
+  updatedAt?: string
+}
+
+export interface SellerMetrics {
+  productsTotal: number
+  activeProducts: number
+  hiddenProducts: number
+  lowStockProducts: number
+  ordersTotal: number
+  unitsSold: number
+  grossRevenue: number
+}
+
+export interface SellerOrderSummary {
+  orderId: string
+  status: OrderStatus
+  currency: string
+  createdAt: string
+  placeTitle: string
+  itemsCount: number
+  grossRevenue: number
+}
+
+export interface SellerDashboard {
+  profile: SellerProfile
+  metrics: SellerMetrics
+  recentProducts: Product[]
+  lowStock: Product[]
+  recentOrders: SellerOrderSummary[]
 }

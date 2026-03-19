@@ -8,10 +8,9 @@ import { fetchCartThunk } from '@/store/slices/cartSlice'
 import { checkoutThunk } from '@/store/slices/ordersSlice'
 import { fetchPlacesThunk } from '@/store/slices/placesSlice'
 import { formatCurrency } from '@/utils/format'
+import { resolveCartItemImage } from '@/utils/media'
 
 import styles from '@/pages/CheckoutPage.module.scss'
-
-const FALLBACK_IMAGE = 'https://placehold.co/400x400/f3f4f6/6b7280?text=No+Image'
 
 export const CheckoutPage = () => {
   const dispatch = useAppDispatch()
@@ -51,7 +50,7 @@ export const CheckoutPage = () => {
         <div>
           <span className="badge-pill">Оформление</span>
           <h1>Подтвердите адрес и состав заказа</h1>
-          <p>Последний шаг перед отправкой заказа в ваш backend checkout.</p>
+          <p>Последний шаг перед отправкой заказа в историю покупок.</p>
         </div>
       </header>
 
@@ -63,7 +62,7 @@ export const CheckoutPage = () => {
       {cart.items.length === 0 ? (
         <section className={`${styles.empty} empty-state`}>
           <h2>Нечего оформлять</h2>
-          <p>В корзине нет товаров. Сначала добавьте позиции в каталогe.</p>
+          <p>В корзине нет товаров. Сначала добавьте позиции в каталоге.</p>
           <Link to="/cart" className="action-primary">
             Открыть корзину
           </Link>
@@ -126,10 +125,13 @@ export const CheckoutPage = () => {
               <ul className={styles.orderList}>
                 {cart.items.map((item) => (
                   <li key={item.id} className={styles.orderItem}>
-                    <img src={item.imageUrl ?? FALLBACK_IMAGE} alt={item.title} />
+                    <img src={resolveCartItemImage(item)} alt={item.title} />
                     <div className={styles.orderCopy}>
                       <strong>{item.title}</strong>
-                      <span>{item.sku ? `Артикул ${item.sku}` : 'Товар из каталога'}</span>
+                      <span>
+                        {item.sku ? `Артикул ${item.sku}` : 'Товар из каталога'}
+                        {item.sellerName ? ` • ${item.sellerName}` : ''}
+                      </span>
                     </div>
                     <span className={styles.orderQty}>x{item.quantity}</span>
                     <strong>{formatCurrency(item.lineTotal, item.currency ?? cart.currency)}</strong>
@@ -142,7 +144,7 @@ export const CheckoutPage = () => {
           <aside className={`${styles.summary} summary-card`}>
             <div className={styles.summaryTop}>
               <span className="badge-pill">Итог</span>
-              <h2>Заказ готов к отправке</h2>
+              <h2>Заказ готов к подтверждению</h2>
             </div>
 
             <div className={styles.deliveryInfo}>
@@ -160,8 +162,8 @@ export const CheckoutPage = () => {
                 <dd>{formatCurrency(cart.total, cart.currency)}</dd>
               </div>
               <div>
-                <dt>Оплата</dt>
-                <dd>Через текущий backend flow</dd>
+                <dt>Получение</dt>
+                <dd>По выбранному адресу</dd>
               </div>
             </dl>
 
@@ -174,9 +176,7 @@ export const CheckoutPage = () => {
               {orders.checkoutStatus === 'loading' ? 'Отправляем заказ...' : 'Подтвердить заказ'}
             </button>
 
-            <p className={styles.helper}>
-              После подтверждения заказ появится в истории заказов без изменения существующих API.
-            </p>
+            <p className={styles.helper}>После подтверждения заказ появится в истории покупок и будет доступен в личном кабинете.</p>
           </aside>
         </div>
       )}

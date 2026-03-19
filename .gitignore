@@ -32,6 +32,7 @@ _generate_backend_report.ps1
 .idea/
 .DS_Store
 Thumbs.db
+.codex-temp/
 
 # Go workspaces
 go.work

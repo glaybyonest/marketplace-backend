@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 
-import { ProductCard } from '@/components/catalog/ProductCard'
+import { ProductGrid } from '@/components/catalog/ProductGrid'
 import { AppLoader } from '@/components/common/AppLoader'
 import { ErrorMessage } from '@/components/common/ErrorMessage'
 import { productService } from '@/services/productService'
@@ -11,27 +11,11 @@ import { addFavoriteThunk, removeFavoriteThunk } from '@/store/slices/favoritesS
 import { fetchPlacesThunk } from '@/store/slices/placesSlice'
 import { fetchProductThunk } from '@/store/slices/productsSlice'
 import type { Product } from '@/types/domain'
-import { formatCurrency } from '@/utils/format'
+import { formatCurrency, formatUnitLabel } from '@/utils/format'
+import { resolveProductImage } from '@/utils/media'
+import { formatProductSpecLabel, formatProductSpecValue, getProductSpecEntries } from '@/utils/productSpecs'
 
 import styles from '@/pages/ProductPage.module.scss'
-
-const FALLBACK_IMAGE = 'https://placehold.co/1200x900/f3f4f6/6b7280?text=No+Image'
-
-const formatSpecLabel = (key: string) =>
-  key
-    .replaceAll('_', ' ')
-    .replaceAll('-', ' ')
-    .replace(/\b\w/g, (letter) => letter.toUpperCase())
-
-const formatSpecValue = (value: string | number | boolean | null) => {
-  if (value === null) {
-    return 'Не указано'
-  }
-  if (typeof value === 'boolean') {
-    return value ? 'Да' : 'Нет'
-  }
-  return String(value)
-}
 
 export const ProductPage = () => {
   const { productRef = '' } = useParams()
@@ -115,16 +99,25 @@ export const ProductPage = () => {
     [favoriteItems, product],
   )
 
-  const gallery = product?.images.length ? product.images : [product?.imageUrl ?? FALLBACK_IMAGE]
+  const gallery = useMemo(() => {
+    if (!product) {
+      return []
+    }
+
+    const rawGallery = product.images.length > 0 ? product.images : [product.imageUrl ?? '']
+    return rawGallery.map((image, index) => resolveProductImage(product, index, image))
+  }, [product])
   const selectedImage = product ? selectedImages[product.id] ?? '' : ''
   const activeImage = selectedImage && gallery.includes(selectedImage) ? selectedImage : gallery[0]
   const quantity = product ? quantities[product.id] ?? 1 : 1
   const safeQuantity = Math.min(quantity, Math.max(product?.stock || 1, 1))
-  const specEntries = Object.entries(product?.specs ?? {})
+  const specEntries = getProductSpecEntries(product?.specs)
   const oldPrice = product ? Math.round(product.price * 1.14) : 0
   const savings = product ? oldPrice - product.price : 0
   const isAvailable = Boolean(product?.stock && product.stock > 0)
   const deliveryPlace = places[0]
+  const sellerLabel = product?.sellerName || 'Партнёрский магазин'
+  const unitLabel = formatUnitLabel(product?.unit) || 'шт.'
 
   const handleToggleFavorite = async () => {
     if (!product) {
@@ -216,7 +209,7 @@ export const ProductPage = () => {
             <div className={styles.badges}>
               {product.brand ? <span className={styles.badgeAlt}>{product.brand}</span> : null}
               <span className={styles.badge}>Артикул {product.sku || product.id.slice(0, 8)}</span>
-              {product.unit ? <span className={styles.badge}>Продажа по {product.unit}</span> : null}
+              {product.unit ? <span className={styles.badge}>Единица: {unitLabel}</span> : null}
             </div>
 
             <h1 className={styles.title}>{product.title}</h1>
@@ -224,39 +217,39 @@ export const ProductPage = () => {
             <div className={styles.metaRow}>
               <span>Рейтинг {product.rating ? product.rating.toFixed(1) : '4.8'} / 5</span>
               <span>{product.categoryName ?? 'Категория каталога'}</span>
+              <span>{sellerLabel}</span>
               <span>{isAvailable ? `В наличии: ${product.stock}` : 'Под заказ'}</span>
             </div>
 
             <div className={styles.priceRow}>
               <strong className={styles.currentPrice}>{formatCurrency(product.price, product.currency)}</strong>
               {savings > 0 ? <span className={styles.oldPrice}>{formatCurrency(oldPrice, product.currency)}</span> : null}
-              {product.unit ? <span className={styles.unit}>за {product.unit}</span> : null}
             </div>
 
             <div className={isAvailable ? styles.stockChipActive : styles.stockChip}>
-              {isAvailable ? 'Можно оформить доставку или самовывоз' : 'Сейчас недоступен для быстрой покупки'}
+              {isAvailable ? 'Можно оформить доставку или самовывоз' : 'Товар временно недоступен для быстрой покупки'}
             </div>
 
             <p className={styles.description}>
-              {product.description || 'Описание пока не добавлено. Откройте характеристики и детали поставки ниже.'}
+              {product.description || 'Описание пока не добавлено. Откройте характеристики и детали получения ниже.'}
             </p>
 
             <div className={styles.statsGrid}>
               <article className={styles.statCard}>
-                <span>Бренд</span>
-                <strong>{product.brand || 'Marketplace Collection'}</strong>
+                <span>Магазин</span>
+                <strong>{sellerLabel}</strong>
               </article>
               <article className={styles.statCard}>
                 <span>Категория</span>
                 <strong>{product.categoryName || 'Каталог'}</strong>
               </article>
               <article className={styles.statCard}>
-                <span>SKU</span>
+                <span>Артикул</span>
                 <strong>{product.sku || product.id.slice(0, 8)}</strong>
               </article>
               <article className={styles.statCard}>
                 <span>Формат продажи</span>
-                <strong>{product.unit || 'шт.'}</strong>
+                <strong>{unitLabel}</strong>
               </article>
             </div>
           </section>
@@ -274,12 +267,12 @@ export const ProductPage = () => {
                 <p>
                   {deliveryPlace
                     ? `${deliveryPlace.title}: ${deliveryPlace.addressText}`
-                    : 'Выберите адрес в профиле, чтобы увидеть персональный сценарий доставки.'}
+                    : 'Выберите адрес в профиле, чтобы видеть персональный сценарий доставки.'}
                 </p>
               </article>
               <article className={styles.deliveryCard}>
                 <strong>Оплата и оформление</strong>
-                <p>Все действия идут через ваш текущий backend checkout без изменения API-контрактов.</p>
+                <p>Проверьте корзину, подтвердите адрес и завершите покупку в пару шагов.</p>
               </article>
             </div>
           </section>
@@ -295,8 +288,8 @@ export const ProductPage = () => {
               <dl className={styles.specList}>
                 {specEntries.map(([key, value]) => (
                   <div key={key} className={styles.specRow}>
-                    <dt>{formatSpecLabel(key)}</dt>
-                    <dd>{formatSpecValue(value as string | number | boolean | null)}</dd>
+                    <dt>{formatProductSpecLabel(key)}</dt>
+                    <dd>{formatProductSpecValue(value as string | number | boolean | null, key)}</dd>
                   </div>
                 ))}
               </dl>
@@ -366,12 +359,12 @@ export const ProductPage = () => {
               <strong>{deliveryPlace?.title || 'Гостевой режим'}</strong>
             </div>
             <div>
-              <span>Получение</span>
-              <strong>{isAvailable ? 'Зависит от адреса' : 'После пополнения'}</strong>
+              <span>Магазин</span>
+              <strong>{sellerLabel}</strong>
             </div>
             <div>
               <span>Статус</span>
-              <strong>{isAvailable ? 'Готов к оформлению' : 'Требуется ожидание'}</strong>
+              <strong>{isAvailable ? 'Готов к оформлению' : 'Ожидает пополнения'}</strong>
             </div>
           </div>
         </aside>
@@ -383,14 +376,10 @@ export const ProductPage = () => {
             <div>
               <span className="badge-pill">Похожие товары</span>
               <h2>Часто смотрят вместе с этой карточкой</h2>
-              <p>Подборка построена по текущей категории каталога.</p>
+              <p>Подборка собрана по текущей категории, чтобы проще продолжить выбор.</p>
             </div>
           </div>
-          <div className={styles.recommendationsGrid}>
-            {relatedItems.map((item) => (
-              <ProductCard key={item.id} product={item} />
-            ))}
-          </div>
+          <ProductGrid products={relatedItems} />
         </section>
       ) : relatedStatus === 'loading' ? (
         <section className={`${styles.recommendationsSection} page-card`}>

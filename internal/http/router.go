@@ -35,6 +35,7 @@ type Dependencies struct {
 	FavoritesService       *usecase.FavoritesService
 	PlacesService          *usecase.PlacesService
 	RecommendationsService *usecase.RecommendationsService
+	SellerService          *usecase.SellerService
 	Security               SecurityConfig
 }
 
@@ -70,6 +71,7 @@ func NewRouter(deps Dependencies) http.Handler {
 	favoritesHandler := handlers.NewFavoritesHandler(deps.FavoritesService)
 	placesHandler := handlers.NewPlacesHandler(deps.PlacesService)
 	recommendationsHandler := handlers.NewRecommendationsHandler(deps.RecommendationsService)
+	sellerHandler := handlers.NewSellerHandler(deps.SellerService)
 	healthHandler := handlers.NewHealthHandler(deps.DB)
 
 	router.Handle("/docs/", apidocs.UIHandler())
@@ -151,6 +153,24 @@ func NewRouter(deps Dependencies) http.Handler {
 			r.Get("/orders/{id}", ordersHandler.GetByID)
 
 			r.Get("/recommendations", recommendationsHandler.List)
+
+			r.Get("/seller/profile", sellerHandler.GetProfile)
+			r.Put("/seller/profile", sellerHandler.UpsertProfile)
+			r.Patch("/seller/profile", sellerHandler.UpsertProfile)
+		})
+
+		r.Route("/seller", func(r chi.Router) {
+			r.Use(authMiddleware.Handler)
+			r.Use(csrfMiddleware.Handler)
+			r.Use(httpmw.RequireRole(domain.UserRoleSeller))
+
+			r.Get("/dashboard", sellerHandler.Dashboard)
+			r.Get("/products", sellerHandler.ProductsList)
+			r.Post("/products", sellerHandler.ProductCreate)
+			r.Patch("/products/{id}", sellerHandler.ProductUpdate)
+			r.Patch("/products/{id}/stock", sellerHandler.ProductUpdateStock)
+			r.Delete("/products/{id}", sellerHandler.ProductDelete)
+			r.Get("/orders", sellerHandler.OrdersList)
 		})
 
 		r.Route("/admin", func(r chi.Router) {

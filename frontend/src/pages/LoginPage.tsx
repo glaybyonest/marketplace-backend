@@ -32,7 +32,7 @@ const modeMeta: Record<LoginMode, { label: string; title: string; description: s
   phone_code: {
     label: 'Код на телефон',
     title: 'Вход по коду на телефон',
-    description: 'Используйте номер, привязанный к аккаунту. Код придёт через backend SMS flow.',
+    description: 'Используйте номер, привязанный к аккаунту. Одноразовый код придёт в SMS.',
   },
 }
 
@@ -56,7 +56,6 @@ export const LoginPage = () => {
   const [requestStatus, setRequestStatus] = useState<RequestStatus>('idle')
   const [requestMessage, setRequestMessage] = useState<string | null>(null)
   const [requestError, setRequestError] = useState<string | null>(null)
-  const [devCode, setDevCode] = useState<string | null>(null)
 
   const locationState = (location.state as LocationState | null) ?? null
   const from = locationState?.from ?? '/'
@@ -76,7 +75,6 @@ export const LoginPage = () => {
     setRequestStatus('idle')
     setRequestMessage(null)
     setRequestError(null)
-    setDevCode(null)
     setCode('')
   }
 
@@ -99,7 +97,6 @@ export const LoginPage = () => {
     setRequestStatus('loading')
     setRequestMessage(null)
     setRequestError(null)
-    setDevCode(null)
     dispatch(clearAuthFeedback())
 
     try {
@@ -113,7 +110,6 @@ export const LoginPage = () => {
         const response = await authService.requestEmailLoginCode(email.trim())
         setRequestStatus('succeeded')
         setRequestMessage(buildCodeMessage(response.maskedDestination, response.expiresIn))
-        setDevCode(response.devCode ?? null)
         if (response.devCode) {
           setCode(response.devCode)
         }
@@ -129,7 +125,6 @@ export const LoginPage = () => {
       const response = await authService.requestPhoneLoginCode(phone.trim())
       setRequestStatus('succeeded')
       setRequestMessage(buildCodeMessage(response.maskedDestination, response.expiresIn))
-      setDevCode(response.devCode ?? null)
       if (response.devCode) {
         setCode(response.devCode)
       }
@@ -162,22 +157,21 @@ export const LoginPage = () => {
     <div className={styles.page}>
       <section className={styles.showcase}>
         <div>
-          <span className={styles.showcaseBadge}>Marketplace ID</span>
+          <span className={styles.showcaseBadge}>Вход в аккаунт</span>
           <h2 className={styles.showcaseTitle}>Один экран входа для пароля, email-кода и телефона</h2>
           <p className={styles.showcaseText}>
-            Пароль остаётся основным способом входа, но пользователь может переключиться на одноразовый код по почте или по
-            телефону без отдельной страницы и лишних шагов.
+            Выберите привычный способ авторизации: пароль, код из письма или код на телефон. Все варианты ведут в один и тот же аккаунт.
           </p>
         </div>
 
         <div className={styles.showcaseList}>
           <div>
-            <strong>Пароль как основной путь</strong>
-            <p>Классический email + пароль остаётся на месте и никуда не исчезает.</p>
+            <strong>Классический вход</strong>
+            <p>Email и пароль остаются основным способом доступа к аккаунту.</p>
           </div>
           <div>
-            <strong>Два запасных сценария</strong>
-            <p>Если пароль неудобен, можно запросить код на email или на привязанный номер телефона.</p>
+            <strong>Быстрый код</strong>
+            <p>Если пароль неудобен, можно запросить одноразовый код на email или телефон.</p>
           </div>
         </div>
       </section>
@@ -204,7 +198,6 @@ export const LoginPage = () => {
 
         {pageMessage ? <div className={styles.notice}>{pageMessage}</div> : null}
         {requestMessage ? <div className={styles.success}>{requestMessage}</div> : null}
-        {devCode ? <p className={styles.inlineInfo}>Dev-код уже подставлен в поле ниже: {devCode}</p> : null}
         {requestError ? <ErrorMessage message={requestError} /> : null}
         {authState.error ? <ErrorMessage message={authState.error} /> : null}
 

@@ -6,11 +6,10 @@ import { ErrorMessage } from '@/components/common/ErrorMessage'
 import { useAppDispatch, useAppSelector } from '@/store/hooks'
 import { fetchFavoritesThunk, removeFavoriteThunk } from '@/store/slices/favoritesSlice'
 import { formatCurrency } from '@/utils/format'
+import { resolveProductImage } from '@/utils/media'
 import { getProductPath } from '@/utils/productRef'
 
 import styles from '@/pages/FavoritesPage.module.scss'
-
-const FALLBACK_IMAGE = 'https://placehold.co/1200x900/f3f4f6/6b7280?text=No+Image'
 
 export const FavoritesPage = () => {
   const dispatch = useAppDispatch()
@@ -51,7 +50,7 @@ export const FavoritesPage = () => {
             <article key={item.id} className={styles.item}>
               <Link to={getProductPath(item)} className={styles.imageWrap}>
                 <img
-                  src={item.imageUrl ?? item.images[0] ?? FALLBACK_IMAGE}
+                  src={resolveProductImage(item)}
                   alt={item.title}
                   className={styles.image}
                 />

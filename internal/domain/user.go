@@ -10,6 +10,7 @@ type UserRole string
 
 const (
 	UserRoleCustomer UserRole = "customer"
+	UserRoleSeller   UserRole = "seller"
 	UserRoleAdmin    UserRole = "admin"
 )
 

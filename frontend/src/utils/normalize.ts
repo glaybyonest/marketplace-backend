@@ -8,6 +8,11 @@ import type {
   Product,
   ProductSpecs,
   Review,
+  SellerDashboard,
+  SellerMetrics,
+  SellerOrderSummary,
+  SellerProfile,
+  SellerStatus,
   SessionInfo,
   User,
   UserRole,
@@ -111,6 +116,8 @@ export const normalizeProduct = (input: unknown): Product => {
     name: pickString(source.name, pickString(source.title, 'Product')),
     slug: pickString(source.slug),
     sku: pickString(source.sku),
+    sellerName: pickString(source.seller_name, pickString(source.sellerName)),
+    sellerSlug: pickString(source.seller_slug, pickString(source.sellerSlug)),
     description: pickString(source.description),
     price: pickNumber(source.price),
     currency: pickString(source.currency, 'RUB'),
@@ -122,7 +129,7 @@ export const normalizeProduct = (input: unknown): Product => {
     specs,
     categoryId: pickString(source.category_id, pickString(source.categoryId, pickString(source.category, ''))),
     categoryName: pickString(source.categoryName, pickString(source.category_name)),
-    sellerId: pickString(source.sellerId),
+    sellerId: pickString(source.seller_id, pickString(source.sellerId)),
     stock: pickNumber(source.stock_qty, pickNumber(source.stock, 0)),
     isPublished: source.isPublished === undefined ? Boolean(source.is_active ?? true) : Boolean(source.isPublished),
     isActive: source.is_active === undefined ? true : Boolean(source.is_active),
@@ -182,6 +189,7 @@ export const normalizeCartItem = (input: unknown): CartItem => {
     title: pickString(source.title, pickString(source.product_name, pickString(source.name, pickString(source.productTitle, 'Product')))),
     slug: pickString(source.slug),
     sku: pickString(source.sku),
+    sellerName: pickString(source.seller_store_name, pickString(source.seller_name, pickString(source.sellerName))),
     imageUrl: pickString(source.image_url, pickString(source.imageUrl, pickString(source.image))),
     price: pickNumber(source.unit_price, pickNumber(source.price)),
     quantity: pickNumber(source.quantity, 1),
@@ -232,5 +240,84 @@ export const normalizeAdminStats = (input: unknown): AdminStats => {
     totalUsers: pickNumber(source.totalUsers),
     totalProducts: pickNumber(source.totalProducts),
     activeSellers: pickNumber(source.activeSellers),
+  }
+}
+
+const ensureSellerStatus = (value: unknown): SellerStatus => {
+  if (value === 'pending' || value === 'paused') {
+    return value
+  }
+  return 'active'
+}
+
+export const normalizeSellerProfile = (input: unknown): SellerProfile => {
+  const source = asRecord(input)
+  return {
+    userId: pickString(source.user_id, pickString(source.userId)),
+    storeName: pickString(source.store_name, pickString(source.storeName)),
+    storeSlug: pickString(source.store_slug, pickString(source.storeSlug)),
+    legalName: pickString(source.legal_name, pickString(source.legalName)) || undefined,
+    description: pickString(source.description) || undefined,
+    logoUrl: pickString(source.logo_url, pickString(source.logoUrl)) || undefined,
+    bannerUrl: pickString(source.banner_url, pickString(source.bannerUrl)) || undefined,
+    supportEmail: pickString(source.support_email, pickString(source.supportEmail)) || undefined,
+    supportPhone: pickString(source.support_phone, pickString(source.supportPhone)) || undefined,
+    city: pickString(source.city) || undefined,
+    status: ensureSellerStatus(source.status),
+    createdAt: pickString(source.created_at, pickString(source.createdAt)) || undefined,
+    updatedAt: pickString(source.updated_at, pickString(source.updatedAt)) || undefined,
+  }
+}
+
+export const normalizeSellerMetrics = (input: unknown): SellerMetrics => {
+  const source = asRecord(input)
+  return {
+    productsTotal: pickNumber(source.products_total, pickNumber(source.productsTotal)),
+    activeProducts: pickNumber(source.active_products, pickNumber(source.activeProducts)),
+    hiddenProducts: pickNumber(source.hidden_products, pickNumber(source.hiddenProducts)),
+    lowStockProducts: pickNumber(source.low_stock_products, pickNumber(source.lowStockProducts)),
+    ordersTotal: pickNumber(source.orders_total, pickNumber(source.ordersTotal)),
+    unitsSold: pickNumber(source.units_sold, pickNumber(source.unitsSold)),
+    grossRevenue: pickNumber(source.gross_revenue, pickNumber(source.grossRevenue)),
+  }
+}
+
+export const normalizeSellerOrderSummary = (input: unknown): SellerOrderSummary => {
+  const source = asRecord(input)
+  return {
+    orderId: pickString(source.order_id, pickString(source.orderId)),
+    status: pickString(source.status, 'pending') as SellerOrderSummary['status'],
+    currency: pickString(source.currency, 'RUB'),
+    createdAt: pickString(source.created_at, pickString(source.createdAt, new Date().toISOString())),
+    placeTitle: pickString(source.place_title, pickString(source.placeTitle)),
+    itemsCount: pickNumber(source.items_count, pickNumber(source.itemsCount)),
+    grossRevenue: pickNumber(source.gross_revenue, pickNumber(source.grossRevenue)),
+  }
+}
+
+export const normalizeSellerDashboard = (input: unknown): SellerDashboard => {
+  const source = asRecord(input)
+  const recentProducts = Array.isArray(source.recent_products)
+    ? source.recent_products.map(normalizeProduct)
+    : Array.isArray(source.recentProducts)
+      ? source.recentProducts.map(normalizeProduct)
+      : []
+  const lowStock = Array.isArray(source.low_stock)
+    ? source.low_stock.map(normalizeProduct)
+    : Array.isArray(source.lowStock)
+      ? source.lowStock.map(normalizeProduct)
+      : []
+  const recentOrders = Array.isArray(source.recent_orders)
+    ? source.recent_orders.map(normalizeSellerOrderSummary)
+    : Array.isArray(source.recentOrders)
+      ? source.recentOrders.map(normalizeSellerOrderSummary)
+      : []
+
+  return {
+    profile: normalizeSellerProfile(source.profile ?? {}),
+    metrics: normalizeSellerMetrics(source.metrics ?? {}),
+    recentProducts,
+    lowStock,
+    recentOrders,
   }
 }

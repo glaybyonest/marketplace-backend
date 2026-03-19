@@ -32,6 +32,9 @@ type Product struct {
 	ID           uuid.UUID      `json:"id"`
 	CategoryID   uuid.UUID      `json:"category_id"`
 	CategoryName string         `json:"category_name,omitempty"`
+	SellerID     *uuid.UUID     `json:"seller_id,omitempty"`
+	SellerName   string         `json:"seller_name,omitempty"`
+	SellerSlug   string         `json:"seller_slug,omitempty"`
 	Name         string         `json:"name"`
 	Slug         string         `json:"slug"`
 	Description  string         `json:"description,omitempty"`
@@ -52,6 +55,7 @@ type Product struct {
 // ProductFilter describes catalog list query.
 type ProductFilter struct {
 	CategoryID      *uuid.UUID
+	SellerID        *uuid.UUID
 	Query           string
 	MinPrice        *float64
 	MaxPrice        *float64

@@ -93,7 +93,7 @@ export const VerifyEmailPage = () => {
         <div className={styles.showcaseList}>
           <div>
             <strong>Без ручной модерации</strong>
-            <p>Проверка email полностью автоматизирована на стороне вашего backend.</p>
+            <p>Подтверждение проходит автоматически по ссылке из письма.</p>
           </div>
           <div>
             <strong>Повторная отправка</strong>

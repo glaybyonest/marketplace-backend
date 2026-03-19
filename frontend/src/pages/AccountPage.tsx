@@ -9,6 +9,13 @@ import { fetchProfileThunk, updateProfileThunk } from '@/store/slices/userSlice'
 
 import styles from '@/pages/AccountPage.module.scss'
 
+const roleLabels = {
+  admin: 'Администратор',
+  seller: 'Продавец',
+  customer: 'Покупатель',
+  guest: 'Гость',
+} as const
+
 export const AccountPage = () => {
   const dispatch = useAppDispatch()
   const authUser = useAppSelector((state) => state.auth.user)
@@ -25,6 +32,8 @@ export const AccountPage = () => {
   const email = profile?.email ?? authUser?.email ?? '-'
   const phone = phoneDraft ?? profile?.phone ?? authUser?.phone ?? ''
   const isVerified = Boolean(profile?.isEmailVerified ?? authUser?.isEmailVerified ?? authUser?.emailVerifiedAt)
+  const userRole = authUser?.role ?? 'customer'
+  const roleLabel = roleLabels[userRole]
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault()
@@ -37,7 +46,7 @@ export const AccountPage = () => {
         <div>
           <span className="badge-pill">Личный кабинет</span>
           <h1>{fullName || 'Ваш аккаунт'}</h1>
-          <p>Управляйте профилем, адресами доставки, избранным, заказами и способами входа из одного места.</p>
+          <p>Управляйте профилем, адресами доставки, избранным, заказами и сценариями входа из одного места.</p>
         </div>
         <div className={styles.heroMeta}>
           <div>
@@ -54,7 +63,7 @@ export const AccountPage = () => {
           </div>
           <div>
             <span>Роль</span>
-            <strong>{authUser?.role === 'admin' ? 'Администратор' : 'Покупатель'}</strong>
+            <strong>{roleLabel}</strong>
           </div>
         </div>
       </section>
@@ -90,7 +99,7 @@ export const AccountPage = () => {
                 autoComplete="tel"
               />
             </label>
-            <p className={styles.inlineInfo}>Этот номер используется для входа по одноразовому коду, если вы включите такой сценарий.</p>
+            <p className={styles.inlineInfo}>Номер пригодится для входа по одноразовому коду, если вы захотите его использовать.</p>
             <button type="submit" className="action-primary" disabled={updateStatus === 'loading'}>
               {updateStatus === 'loading' ? 'Сохраняем...' : 'Сохранить изменения'}
             </button>
@@ -104,7 +113,7 @@ export const AccountPage = () => {
           </Link>
           <Link to="/account/orders" className={styles.linkCard}>
             <strong>Заказы</strong>
-            <p>История оформленных заказов и адресов доставки.</p>
+            <p>История покупок, суммы заказов и адреса получения в одном разделе.</p>
           </Link>
           <Link to="/favorites" className={styles.linkCard}>
             <strong>Избранное</strong>
@@ -112,12 +121,23 @@ export const AccountPage = () => {
           </Link>
           <Link to="/account/places" className={styles.linkCard}>
             <strong>Адреса</strong>
-            <p>Места доставки для checkout и персонального сценария получения.</p>
+            <p>Управляйте местами доставки и самовывоза для будущих заказов.</p>
           </Link>
           <Link to="/account/sessions" className={styles.linkCard}>
             <strong>Сессии</strong>
-            <p>Активные устройства и быстрый отзыв доступа.</p>
+            <p>Активные устройства и быстрый отзыв доступа, если он больше не нужен.</p>
           </Link>
+          {authUser?.role === 'seller' ? (
+            <Link to="/seller" className={styles.linkCard}>
+              <strong>Кабинет продавца</strong>
+              <p>Товары магазина, витрина, заказы продавца и ключевые метрики продаж.</p>
+            </Link>
+          ) : authUser?.role === 'customer' ? (
+            <Link to="/seller" className={styles.linkCard}>
+              <strong>Стать продавцом</strong>
+              <p>Откройте свой магазин и управляйте ассортиментом в отдельном кабинете продавца.</p>
+            </Link>
+          ) : null}
           {authUser?.role === 'admin' ? (
             <Link to="/admin" className={styles.linkCard}>
               <strong>Админка</strong>

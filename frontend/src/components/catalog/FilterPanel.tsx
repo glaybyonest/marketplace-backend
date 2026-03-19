@@ -17,8 +17,9 @@ interface FilterPanelProps {
   values: FilterValues
   onChange: (values: FilterValues) => void
   onReset: () => void
-  mobileOpen?: boolean
-  onCloseMobile?: () => void
+  open?: boolean
+  onClose?: () => void
+  panelId?: string
 }
 
 export const FilterPanel = ({
@@ -26,10 +27,15 @@ export const FilterPanel = ({
   values,
   onChange,
   onReset,
-  mobileOpen = false,
-  onCloseMobile,
+  open = false,
+  onClose,
+  panelId,
 }: FilterPanelProps) => {
   const handleChange = (next: Partial<FilterValues>) => onChange({ ...values, ...next })
+
+  if (!open) {
+    return null
+  }
 
   return (
     <>
@@ -39,23 +45,23 @@ export const FilterPanel = ({
           values={values}
           onChange={handleChange}
           onReset={onReset}
-          onCloseMobile={onCloseMobile}
+          onClose={onClose}
+          panelId={panelId}
         />
       </div>
 
-      {mobileOpen ? (
-        <div className={styles.mobileOverlay}>
-          <div className={styles.mobile}>
-            <Content
-              categories={categories}
-              values={values}
-              onChange={handleChange}
-              onReset={onReset}
-              onCloseMobile={onCloseMobile}
-            />
-          </div>
+      <div className={styles.mobileOverlay} onClick={onClose}>
+        <div className={styles.mobile} onClick={(event) => event.stopPropagation()}>
+          <Content
+            categories={categories}
+            values={values}
+            onChange={handleChange}
+            onReset={onReset}
+            onClose={onClose}
+            panelId={panelId}
+          />
         </div>
-      ) : null}
+      </div>
     </>
   )
 }
@@ -65,10 +71,11 @@ interface ContentProps {
   values: FilterValues
   onChange: (next: Partial<FilterValues>) => void
   onReset: () => void
-  onCloseMobile?: () => void
+  onClose?: () => void
+  panelId?: string
 }
 
-const Content = ({ categories, values, onChange, onReset, onCloseMobile }: ContentProps) => {
+const Content = ({ categories, values, onChange, onReset, onClose, panelId }: ContentProps) => {
   const [categoryOpen, setCategoryOpen] = useState(true)
   const [priceOpen, setPriceOpen] = useState(true)
   const [stockOpen, setStockOpen] = useState(true)
@@ -105,14 +112,14 @@ const Content = ({ categories, values, onChange, onReset, onCloseMobile }: Conte
   }
 
   return (
-    <section className={styles.panel} aria-label="Фильтры каталога">
+    <section className={styles.panel} aria-label="Фильтры каталога" id={panelId}>
       <div className={styles.header}>
         <div>
           <span className={styles.kicker}>Подбор</span>
           <h2>Фильтры</h2>
         </div>
-        {onCloseMobile ? (
-          <button className={styles.close} type="button" onClick={onCloseMobile}>
+        {onClose ? (
+          <button className={styles.close} type="button" onClick={onClose}>
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
               <line x1="18" y1="6" x2="6" y2="18" />
               <line x1="6" y1="6" x2="18" y2="18" />
@@ -127,7 +134,7 @@ const Content = ({ categories, values, onChange, onReset, onCloseMobile }: Conte
           <button
             type="button"
             className={styles.accordionHeader}
-            onClick={() => setCategoryOpen(!categoryOpen)}
+            onClick={() => setCategoryOpen((value) => !value)}
             aria-expanded={categoryOpen}
           >
             <span>Категории</span>
@@ -162,7 +169,7 @@ const Content = ({ categories, values, onChange, onReset, onCloseMobile }: Conte
           <button
             type="button"
             className={styles.accordionHeader}
-            onClick={() => setPriceOpen(!priceOpen)}
+            onClick={() => setPriceOpen((value) => !value)}
             aria-expanded={priceOpen}
           >
             <span>Цена</span>
@@ -204,7 +211,7 @@ const Content = ({ categories, values, onChange, onReset, onCloseMobile }: Conte
           <button
             type="button"
             className={styles.accordionHeader}
-            onClick={() => setStockOpen(!stockOpen)}
+            onClick={() => setStockOpen((value) => !value)}
             aria-expanded={stockOpen}
           >
             <span>Наличие</span>
@@ -232,7 +239,7 @@ const Content = ({ categories, values, onChange, onReset, onCloseMobile }: Conte
           <button
             type="button"
             className={styles.accordionHeader}
-            onClick={() => setSortOpen(!sortOpen)}
+            onClick={() => setSortOpen((value) => !value)}
             aria-expanded={sortOpen}
           >
             <span>Сортировка</span>

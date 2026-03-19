@@ -59,6 +59,7 @@ type AdminProductInput struct {
 type ProductWriteInput struct {
 	ID          uuid.UUID
 	CategoryID  uuid.UUID
+	SellerID    *uuid.UUID
 	Name        string
 	Slug        string
 	Description string
@@ -379,10 +380,22 @@ func (s *AdminService) validateCategoryParent(ctx context.Context, categoryID uu
 }
 
 func (s *AdminService) normalizeProductInput(ctx context.Context, current domain.Product, input AdminProductInput) (ProductWriteInput, error) {
+	return buildProductWriteInput(ctx, s.categories, current, input, nil)
+}
+
+func buildProductWriteInput(
+	ctx context.Context,
+	categories interface {
+		GetByID(ctx context.Context, id uuid.UUID) (domain.Category, error)
+	},
+	current domain.Product,
+	input AdminProductInput,
+	sellerID *uuid.UUID,
+) (ProductWriteInput, error) {
 	if input.CategoryID == uuid.Nil {
 		return ProductWriteInput{}, domain.ErrInvalidInput
 	}
-	if _, err := s.categories.GetByID(ctx, input.CategoryID); err != nil {
+	if _, err := categories.GetByID(ctx, input.CategoryID); err != nil {
 		return ProductWriteInput{}, err
 	}
 
@@ -426,9 +439,15 @@ func (s *AdminService) normalizeProductInput(ctx context.Context, current domain
 		isActive = *input.IsActive
 	}
 
+	effectiveSellerID := sellerID
+	if effectiveSellerID == nil && current.SellerID != nil {
+		effectiveSellerID = current.SellerID
+	}
+
 	return ProductWriteInput{
 		ID:          current.ID,
 		CategoryID:  input.CategoryID,
+		SellerID:    effectiveSellerID,
 		Name:        name,
 		Slug:        slug,
 		Description: strings.TrimSpace(input.Description),
@@ -464,6 +483,8 @@ func productAuditMetadata(product domain.Product) map[string]any {
 	return map[string]any{
 		"category_id":   product.CategoryID.String(),
 		"category_name": product.CategoryName,
+		"seller_id":     uuidToString(product.SellerID),
+		"seller_name":   product.SellerName,
 		"name":          product.Name,
 		"slug":          product.Slug,
 		"sku":           product.SKU,

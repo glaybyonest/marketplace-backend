@@ -171,7 +171,7 @@ export const RegisterPage = () => {
             />
           </label>
 
-          <p className={styles.hint}>Телефон необязателен, но он понадобится, если вы захотите входить по коду из SMS.</p>
+          <p className={styles.hint}>Телефон необязателен, но пригодится, если вы захотите входить по одноразовому коду.</p>
           <p className={styles.hint}>Используйте от 8 до 72 символов, минимум одну латинскую букву и одну цифру.</p>
 
           {shownError ? <ErrorMessage message={shownError} /> : null}

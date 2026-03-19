@@ -91,6 +91,7 @@ func (r *RecommendationRepository) ListByCategories(
 		SELECT `+productSelectColumns+`
 		FROM products p
 		INNER JOIN categories c ON c.id = p.category_id
+		LEFT JOIN seller_profiles sp ON sp.user_id = p.seller_id
 		LEFT JOIN product_popularity_stats s ON s.product_id = p.id
 		WHERE p.is_active = TRUE
 		  AND p.category_id = ANY($1)
@@ -127,6 +128,7 @@ func (r *RecommendationRepository) ListPopular(ctx context.Context, excludeProdu
 		SELECT `+productSelectColumns+`
 		FROM products p
 		INNER JOIN categories c ON c.id = p.category_id
+		LEFT JOIN seller_profiles sp ON sp.user_id = p.seller_id
 		LEFT JOIN product_popularity_stats s ON s.product_id = p.id
 		WHERE p.is_active = TRUE
 		  AND ($1::uuid[] IS NULL OR NOT (p.id = ANY($1)))
@@ -158,6 +160,7 @@ func (r *RecommendationRepository) ListCached(ctx context.Context, userID uuid.U
 		FROM user_recommendations ur
 		INNER JOIN products p ON p.id = ur.product_id
 		INNER JOIN categories c ON c.id = p.category_id
+		LEFT JOIN seller_profiles sp ON sp.user_id = p.seller_id
 		WHERE ur.user_id = $1
 		  AND p.is_active = TRUE
 		ORDER BY ur.rank ASC

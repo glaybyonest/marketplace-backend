@@ -13,7 +13,7 @@ export const ProtectedRoute = ({ requiredRole }: ProtectedRouteProps) => {
   const { isAuthenticated, user, sessionBootstrapped } = useAppSelector((state) => state.auth)
 
   if (!sessionBootstrapped) {
-    return <AppLoader label="Restoring session..." />
+    return <AppLoader label="Восстанавливаем сессию..." />
   }
 
   if (!isAuthenticated) {
@@ -21,7 +21,7 @@ export const ProtectedRoute = ({ requiredRole }: ProtectedRouteProps) => {
   }
 
   if (requiredRole && !user) {
-    return <AppLoader label="Checking access..." />
+    return <AppLoader label="Проверяем доступ..." />
   }
 
   if (requiredRole && user?.role !== requiredRole) {

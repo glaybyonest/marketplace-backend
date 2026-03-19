@@ -59,6 +59,7 @@ func New(cfg config.Config, logger *slog.Logger) (*Application, error) {
 	placeRepo := postgres.NewPlaceRepository(db)
 	eventRepo := postgres.NewEventRepository(db)
 	recommendationRepo := postgres.NewRecommendationRepository(db)
+	sellerRepo := postgres.NewSellerRepository(db)
 
 	jwtManager := security.NewJWTManager(cfg.JWTSecret, cfg.AccessTokenTTL)
 	passwordManager := security.NewPasswordManager()
@@ -112,6 +113,7 @@ func New(cfg config.Config, logger *slog.Logger) (*Application, error) {
 	favoritesService := usecase.NewFavoritesService(favoriteRepo, productRepo, eventRepo)
 	placesService := usecase.NewPlacesService(placeRepo)
 	recommendationsService := usecase.NewRecommendationsService(recommendationRepo)
+	sellerService := usecase.NewSellerService(sellerRepo, categoryRepo, productRepo, userRepo, auditLogger)
 	jobRunner := jobs.NewRunner(
 		logger,
 		jobs.Config{
@@ -152,6 +154,7 @@ func New(cfg config.Config, logger *slog.Logger) (*Application, error) {
 		FavoritesService:       favoritesService,
 		PlacesService:          placesService,
 		RecommendationsService: recommendationsService,
+		SellerService:          sellerService,
 		Security: httpapi.SecurityConfig{
 			RegisterRatePolicy: httpmw.RateLimitPolicy{
 				Name:   "auth_register",

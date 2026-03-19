@@ -1,18 +1,20 @@
 # Marketplace Backend
 
-Go-бэкенд маркетплейса с frontend на React/Vite в том же репозитории.
+Go-бэкенд универсального маркетплейса с frontend на React/Vite в том же репозитории.
 
 Сейчас проект покрывает:
 - JWT auth с `access/refresh` токенами
 - подтверждение email после регистрации
 - восстановление пароля по одноразовой ссылке
-- каталог товаров и категории
+- универсальный каталог товаров и категории
 - изображения товаров, галерея и характеристики (`brand`, `unit`, `specs`)
 - улучшенный поиск: suggestions, popular queries, price filters, stock filter
 - избранное
 - адреса пользователя (`places`)
 - серверную корзину
 - checkout и заказы
+- роль продавца, профиль магазина и витрина продавца
+- кабинет продавца, каталог магазина и сводка продавца по заказам
 - персональные рекомендации
 - background jobs: email queue, cleanup expired auth data, refresh aggregates/recommendations
 - security hardening: rate limit на auth endpoints, login lockout/cooldown, security headers, расширенный audit trail
@@ -138,6 +140,28 @@ powershell -ExecutionPolicy Bypass -File scripts/dev-all.ps1
 Скрипт:
 - создаёт `.env` из `.env.example`, если файла нет
 - поднимает `postgres`, `api`, `adminer`, `prometheus`, `grafana`
+
+## Seed-данные и роли
+
+После применения миграций проект поднимается с универсальным каталогом и ролями:
+- `customer` — покупательский сценарий: каталог, корзина, checkout, заказы, адреса, избранное
+- `seller` — магазин продавца, товары, витрина и seller order summary
+- `admin` — backoffice для категорий и товаров
+
+Seller seed-аккаунты для локальной проверки:
+- `merchant-urbanwave@seed.marketplace.local` / `Seller123`
+- `merchant-casaluna@seed.marketplace.local` / `Seller123`
+- `merchant-roamfit@seed.marketplace.local` / `Seller123`
+
+Ключевые миграции для универсализации каталога и seller-flow:
+- `migrations/00015_seller_marketplace_universalization.sql`
+- `migrations/00016_catalog_refresh.sql`
+- `migrations/00017_local_media_refs.sql`
+
+Генератор большого каталога под пользовательский ассортимент:
+- `scripts/catalog_refresh_source.txt`
+- `scripts/generate_catalog_refresh.mjs`
+- локальные media refs для товаров генерируются в формате `marketplace-media://...` и рендерятся на frontend без внешних image-сервисов
 - ждёт `http://localhost:8080/readyz`
 - ставит frontend-зависимости при необходимости
 - запускает `frontend` через `npm run dev`
@@ -540,6 +564,13 @@ Production monitoring config:
 3. Дополнительно ограничьте выдачу по категории, цене и наличию.
 4. Откройте карточку товара из результатов.
 
+Seller flow:
+1. Войдите под seller seed-аккаунтом или откройте `/seller` из обычного аккаунта.
+2. Если аккаунт ещё не seller, заполните профиль магазина и активируйте кабинет продавца.
+3. Перейдите в `/seller/products` и добавьте или обновите карточку товара.
+4. Проверьте `/seller/storefront` для описания, контактов и статуса магазина.
+5. Откройте `/seller/orders`, чтобы увидеть seller-side сводку по заказам.
+
 ## Частые проблемы
 - `404` на `api/api/v1/...`: `VITE_API_BASE_URL` должен быть `/api`, а frontend должен ходить на `/v1/...`
 - `400` на `POST /api/v1/auth/register`: пароль должен быть длиной `8-72`, содержать минимум одну латинскую букву и одну цифру; `email` должен быть уникальным
@@ -561,7 +592,7 @@ Production monitoring config:
 - `limit`
 
 Search endpoints:
-- `GET /api/v1/search/suggestions?q=cement&limit=8`
+- `GET /api/v1/search/suggestions?q=headphones&limit=8`
 - `GET /api/v1/search/popular?limit=6`
 
 ## Полезные команды
@@ -606,6 +637,26 @@ ADMIN_EMAILS=admin@example.com
 - CRUD товаров
 - изменение остатков
 - скрытие товара из публичного каталога через `is_active`
+
+## Seller API
+
+Маршруты seller-кабинета:
+- `/seller`
+- `/seller/products`
+- `/seller/storefront`
+- `/seller/orders`
+
+Seller endpoints:
+- `GET /api/v1/seller/profile`
+- `PUT /api/v1/seller/profile`
+- `PATCH /api/v1/seller/profile`
+- `GET /api/v1/seller/dashboard`
+- `GET /api/v1/seller/products`
+- `POST /api/v1/seller/products`
+- `PATCH /api/v1/seller/products/{id}`
+- `PATCH /api/v1/seller/products/{id}/stock`
+- `DELETE /api/v1/seller/products/{id}`
+- `GET /api/v1/seller/orders`
 
 Для применения роли и admin API нужна миграция:
 - `00009_admin_backoffice.sql`

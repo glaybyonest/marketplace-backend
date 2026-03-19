@@ -376,12 +376,6 @@
   gap: 16px;
 }
 
-.recommendationsGrid {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 16px;
-}
-
 @media (max-width: 1280px) {
   .layout {
     grid-template-columns: 1fr 1fr;
@@ -397,7 +391,6 @@
   .layout,
   .galleryRail,
   .statsGrid,
-  .recommendationsGrid,
   .specRow {
     grid-template-columns: 1fr;
   }

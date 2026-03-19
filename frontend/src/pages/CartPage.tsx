@@ -11,11 +11,10 @@ import {
   updateCartItemThunk,
 } from '@/store/slices/cartSlice'
 import { formatCurrency } from '@/utils/format'
+import { resolveCartItemImage } from '@/utils/media'
 import { getProductPath } from '@/utils/productRef'
 
 import styles from '@/pages/CartPage.module.scss'
-
-const FALLBACK_IMAGE = 'https://placehold.co/1200x900/f3f4f6/6b7280?text=No+Image'
 
 export const CartPage = () => {
   const dispatch = useAppDispatch()
@@ -57,7 +56,7 @@ export const CartPage = () => {
         <div>
           <span className="badge-pill">Корзина</span>
           <h1>Проверьте состав заказа</h1>
-          <p>Товары уже синхронизированы с вашим backend. Здесь остаётся уточнить количество и перейти к оформлению.</p>
+          <p>Здесь можно уточнить количество, сверить магазины и перейти к оформлению покупки.</p>
         </div>
         <div className={styles.headerActions}>
           <Link to="/" className="action-secondary">
@@ -88,7 +87,7 @@ export const CartPage = () => {
             {items.map((item) => (
               <article key={item.id} className={styles.item}>
                 <Link to={getProductPath(item)} className={styles.imageWrap}>
-                  <img src={item.imageUrl ?? FALLBACK_IMAGE} alt={item.title} className={styles.image} />
+                  <img src={resolveCartItemImage(item)} alt={item.title} className={styles.image} />
                 </Link>
 
                 <div className={styles.itemMain}>
@@ -99,6 +98,7 @@ export const CartPage = () => {
                       </Link>
                       <p className={styles.meta}>
                         {item.sku ? `Артикул ${item.sku}` : 'Товар из каталога'}
+                        {item.sellerName ? ` • ${item.sellerName}` : ''}
                         {item.stock !== undefined ? ` • Доступно ${item.stock}` : ''}
                       </p>
                     </div>
@@ -163,7 +163,7 @@ export const CartPage = () => {
               </div>
               <div>
                 <dt>Доставка</dt>
-                <dd>Рассчитается на следующем шаге</dd>
+                <dd>Рассчитывается на следующем шаге</dd>
               </div>
             </dl>
 
@@ -179,7 +179,7 @@ export const CartPage = () => {
             <div className={styles.notes}>
               <div>
                 <strong>Оформление без сюрпризов</strong>
-                <p>Адреса, checkout и подтверждение заказа используют текущие backend-эндпоинты.</p>
+                <p>На следующем шаге вы подтвердите адрес, состав покупки и итоговую сумму заказа.</p>
               </div>
               <div>
                 <strong>Изменения сохраняются сразу</strong>

@@ -18,6 +18,10 @@ import { ProductPage } from '@/pages/ProductPage'
 import { RegisterPage } from '@/pages/RegisterPage'
 import { ResetPasswordPage } from '@/pages/ResetPasswordPage'
 import { SessionsPage } from '@/pages/SessionsPage'
+import { SellerHomePage } from '@/pages/SellerHomePage'
+import { SellerOrdersPage } from '@/pages/SellerOrdersPage'
+import { SellerProductsPage } from '@/pages/SellerProductsPage'
+import { SellerStorefrontPage } from '@/pages/SellerStorefrontPage'
 import { VerifyEmailPage } from '@/pages/VerifyEmailPage'
 
 export const AppRouter = () => (
@@ -38,6 +42,7 @@ export const AppRouter = () => (
       <Route path="/account/orders" element={<OrdersPage />} />
       <Route path="/account/places" element={<PlacesPage />} />
       <Route path="/account/sessions" element={<SessionsPage />} />
+      <Route path="/seller" element={<SellerHomePage />} />
     </Route>
 
     <Route element={<ProtectedRoute requiredRole="admin" />}>
@@ -46,7 +51,11 @@ export const AppRouter = () => (
       <Route path="/admin/products" element={<AdminProductsPage />} />
     </Route>
 
-    <Route path="/seller/*" element={<Navigate to="/" replace />} />
+    <Route element={<ProtectedRoute requiredRole="seller" />}>
+      <Route path="/seller/products" element={<SellerProductsPage />} />
+      <Route path="/seller/storefront" element={<SellerStorefrontPage />} />
+      <Route path="/seller/orders" element={<SellerOrdersPage />} />
+    </Route>
 
     <Route path="/logout" element={<Navigate to="/login" replace />} />
     <Route path="*" element={<NotFoundPage />} />

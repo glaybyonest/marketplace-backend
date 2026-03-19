@@ -2,6 +2,7 @@ package postgres
 
 import (
 	"context"
+	"database/sql"
 	"time"
 
 	"marketplace-backend/internal/domain"
@@ -112,6 +113,22 @@ func (r *UserRepository) UpdatePhone(ctx context.Context, id uuid.UUID, phone *s
 	return user, nil
 }
 
+func (r *UserRepository) UpdateRole(ctx context.Context, id uuid.UUID, role domain.UserRole) (domain.User, error) {
+	const q = `
+		UPDATE users
+		SET role = $2
+		WHERE id = $1
+		RETURNING id, email, phone, password_hash, full_name, role, created_at, updated_at, is_active, email_verified_at, failed_login_attempts, last_failed_login_at, locked_until
+	`
+
+	var user domain.User
+	err := scanUser(r.db.QueryRow(ctx, q, id, role), &user)
+	if err != nil {
+		return domain.User{}, mapError(err)
+	}
+	return user, nil
+}
+
 func (r *UserRepository) UpdatePasswordHash(ctx context.Context, id uuid.UUID, passwordHash string) error {
 	cmd, err := r.db.Exec(ctx, `
 		UPDATE users
@@ -212,12 +229,15 @@ func (r *UserRepository) ClearFailedLogin(ctx context.Context, id uuid.UUID) err
 }
 
 func scanUser(row pgx.Row, user *domain.User) error {
+	var phone sql.NullString
+	var fullName sql.NullString
+
 	err := row.Scan(
 		&user.ID,
 		&user.Email,
-		&user.Phone,
+		&phone,
 		&user.PasswordHash,
-		&user.FullName,
+		&fullName,
 		&user.Role,
 		&user.CreatedAt,
 		&user.UpdatedAt,
@@ -229,6 +249,16 @@ func scanUser(row pgx.Row, user *domain.User) error {
 	)
 	if err != nil {
 		return err
+	}
+	if phone.Valid {
+		user.Phone = phone.String
+	} else {
+		user.Phone = ""
+	}
+	if fullName.Valid {
+		user.FullName = fullName.String
+	} else {
+		user.FullName = ""
 	}
 	if user.Role == "" {
 		user.Role = domain.UserRoleCustomer

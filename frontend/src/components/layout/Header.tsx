@@ -14,19 +14,24 @@ import styles from '@/components/layout/Header.module.scss'
 interface NavItem {
   to: string
   label: string
-  icon: 'user' | 'orders' | 'heart' | 'cart' | 'account' | 'admin'
+  icon: 'user' | 'orders' | 'heart' | 'cart' | 'account' | 'admin' | 'store'
 }
 
-const privateItems: NavItem[] = [
+const buyerItems: NavItem[] = [
   { to: '/account', label: 'Кабинет', icon: 'account' },
   { to: '/account/orders', label: 'Заказы', icon: 'orders' },
   { to: '/favorites', label: 'Избранное', icon: 'heart' },
   { to: '/cart', label: 'Корзина', icon: 'cart' },
 ]
 
-const adminItems: NavItem[] = [
-  { to: '/admin', label: 'Админка', icon: 'admin' },
+const sellerItems: NavItem[] = [
+  { to: '/seller', label: 'Магазин', icon: 'store' },
+  { to: '/account', label: 'Кабинет', icon: 'account' },
+  { to: '/favorites', label: 'Избранное', icon: 'heart' },
+  { to: '/cart', label: 'Корзина', icon: 'cart' },
 ]
+
+const adminItems: NavItem[] = [{ to: '/admin', label: 'Админка', icon: 'admin' }]
 
 const renderIcon = (icon: NavItem['icon']) => {
   switch (icon) {
@@ -48,6 +53,14 @@ const renderIcon = (icon: NavItem['icon']) => {
           <path d="M4 5h2l1.2 8.1a1.7 1.7 0 0 0 1.7 1.4h7.7a1.7 1.7 0 0 0 1.7-1.3L20 8H7.1" />
           <circle cx="10" cy="19" r="1.2" />
           <circle cx="17" cy="19" r="1.2" />
+        </svg>
+      )
+    case 'store':
+      return (
+        <svg viewBox="0 0 24 24" aria-hidden="true">
+          <path d="M4 8.5 5.4 4h13.2L20 8.5" />
+          <path d="M5 9v9.5a1.5 1.5 0 0 0 1.5 1.5h11a1.5 1.5 0 0 0 1.5-1.5V9" />
+          <path d="M9 20v-5.5h6V20" />
         </svg>
       )
     case 'account':
@@ -90,11 +103,23 @@ export const Header = () => {
     }
 
     if (auth.user?.role === 'admin') {
-      return [...privateItems, ...adminItems]
+      return [...buyerItems, ...adminItems]
     }
 
-    return privateItems
+    if (auth.user?.role === 'seller') {
+      return sellerItems
+    }
+
+    return buyerItems
   }, [auth.isAuthenticated, auth.user?.role])
+
+  const topLinks = useMemo(() => {
+    if (auth.user?.role === 'seller') {
+      return utilityLinks.map((item, index) => (index === 0 ? { href: '/seller', label: 'Кабинет продавца' } : item))
+    }
+
+    return utilityLinks
+  }, [auth.user?.role])
 
   useEffect(() => {
     if (categoriesState.status === 'idle') {
@@ -184,7 +209,7 @@ export const Header = () => {
           </Link>
 
           <div className={styles.utilityLinks}>
-            {utilityLinks.map((item) => (
+            {topLinks.map((item) => (
               <Link key={item.label} to={item.href}>
                 {item.label}
               </Link>
@@ -196,9 +221,9 @@ export const Header = () => {
       <div className={styles.mainBar}>
         <div className={styles.mainInner}>
           <div className={styles.brandRow}>
-            <Link to="/" className={styles.brand} aria-label="На главную Marketplace">
+            <Link to="/" className={styles.brand} aria-label="На главную">
               <span className={styles.brandMark}>M</span>
-              <span className={styles.brandText}>Marketplace</span>
+              <span className={styles.brandText}>Маркет</span>
             </Link>
 
             <button
@@ -219,7 +244,7 @@ export const Header = () => {
               initialValue={searchValue}
               onSearch={handleSearch}
               variant="header"
-              placeholder="Искать в Marketplace"
+              placeholder="Искать товары и категории"
               submitLabel="Найти"
             />
           </div>
@@ -273,10 +298,18 @@ export const Header = () => {
         <div className={styles.mobileSheet} id="catalog-sheet">
           <div className={styles.mobileContent}>
             <div className={styles.mobileSection}>
-              <strong>Разделы каталога</strong>
-              <div className={styles.mobileLinks}>
+              <div className={styles.mobileSectionHeader}>
+                <strong>Разделы каталога</strong>
+                <span>{categoriesState.items.length} категорий</span>
+              </div>
+              <div className={`${styles.mobileLinks} ${styles.mobileCatalogGrid}`}>
                 {categoriesState.items.map((category) => (
-                  <button key={category.id} type="button" className={styles.mobileNavButton} onClick={() => openCategory(category.id)}>
+                  <button
+                    key={category.id}
+                    type="button"
+                    className={`${styles.mobileNavButton} ${styles.mobileCatalogButton}`}
+                    onClick={() => openCategory(category.id)}
+                  >
                     {category.name}
                   </button>
                 ))}
@@ -284,20 +317,38 @@ export const Header = () => {
             </div>
 
             <div className={styles.mobileSection}>
-              <strong>Навигация</strong>
-              <div className={styles.mobileLinks}>
-                {(auth.isAuthenticated ? [...privateItems, ...(auth.user?.role === 'admin' ? adminItems : [])] : []).map((item) => (
+              <div className={styles.mobileSectionHeader}>
+                <strong>Навигация</strong>
+                <span>{auth.isAuthenticated ? 'Быстрый доступ' : 'Вход и аккаунт'}</span>
+              </div>
+              <div className={`${styles.mobileLinks} ${styles.mobileNavList}`}>
+                {(auth.isAuthenticated ? navItems : []).map((item) => (
                   <NavLink key={item.to} to={item.to} className={styles.mobileNavButton} onClick={() => setMenuLocationToken(null)}>
-                    {item.label}
+                    <span className={styles.mobileNavIcon}>{renderIcon(item.icon)}</span>
+                    <span>{item.label}</span>
                   </NavLink>
                 ))}
+                {auth.user?.role === 'seller' ? (
+                  <NavLink to="/seller/orders" className={styles.mobileNavButton} onClick={() => setMenuLocationToken(null)}>
+                    <span className={styles.mobileNavIcon}>{renderIcon('orders')}</span>
+                    <span>Заказы продавца</span>
+                  </NavLink>
+                ) : null}
+                {auth.user?.role === 'admin' ? (
+                  <NavLink to="/admin" className={styles.mobileNavButton} onClick={() => setMenuLocationToken(null)}>
+                    <span className={styles.mobileNavIcon}>{renderIcon('admin')}</span>
+                    <span>Админка</span>
+                  </NavLink>
+                ) : null}
                 {!auth.isAuthenticated ? (
                   <>
                     <NavLink to="/login" className={styles.mobileNavButton} onClick={() => setMenuLocationToken(null)}>
-                      Войти
+                      <span className={styles.mobileNavIcon}>{renderIcon('user')}</span>
+                      <span>Войти</span>
                     </NavLink>
                     <NavLink to="/register" className={styles.mobileNavButton} onClick={() => setMenuLocationToken(null)}>
-                      Создать аккаунт
+                      <span className={styles.mobileNavIcon}>{renderIcon('account')}</span>
+                      <span>Создать аккаунт</span>
                     </NavLink>
                   </>
                 ) : null}

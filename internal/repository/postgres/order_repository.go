@@ -20,14 +20,16 @@ type orderQueryer interface {
 }
 
 type checkoutCartRow struct {
-	ProductID uuid.UUID
-	Name      string
-	SKU       string
-	UnitPrice float64
-	Currency  string
-	StockQty  int
-	IsActive  bool
-	Quantity  int
+	ProductID  uuid.UUID
+	Name       string
+	SKU        string
+	SellerID   *uuid.UUID
+	SellerName string
+	UnitPrice  float64
+	Currency   string
+	StockQty   int
+	IsActive   bool
+	Quantity   int
 }
 
 type OrderRepository struct {
@@ -48,10 +50,11 @@ func (r *OrderRepository) Checkout(ctx context.Context, userID uuid.UUID, place 
 	}()
 
 	rows, err := tx.Query(ctx, `
-		SELECT p.id, p.name, p.sku, p.price::double precision, p.currency,
-		       p.stock_qty, p.is_active, ci.quantity
+		SELECT p.id, p.name, p.sku, COALESCE(p.seller_id::text, ''), COALESCE(sp.store_name, ''),
+		       p.price::double precision, p.currency, p.stock_qty, p.is_active, ci.quantity
 		FROM cart_items ci
 		INNER JOIN products p ON p.id = ci.product_id
+		LEFT JOIN seller_profiles sp ON sp.user_id = p.seller_id
 		WHERE ci.user_id = $1
 		ORDER BY ci.created_at ASC
 		FOR UPDATE OF ci, p
@@ -63,10 +66,13 @@ func (r *OrderRepository) Checkout(ctx context.Context, userID uuid.UUID, place 
 	cartRows := make([]checkoutCartRow, 0)
 	for rows.Next() {
 		var item checkoutCartRow
+		var sellerIDText string
 		if err := rows.Scan(
 			&item.ProductID,
 			&item.Name,
 			&item.SKU,
+			&sellerIDText,
+			&item.SellerName,
 			&item.UnitPrice,
 			&item.Currency,
 			&item.StockQty,
@@ -75,6 +81,14 @@ func (r *OrderRepository) Checkout(ctx context.Context, userID uuid.UUID, place 
 		); err != nil {
 			rows.Close()
 			return domain.Order{}, mapError(err)
+		}
+		if sellerIDText != "" {
+			sellerID, err := uuid.Parse(sellerIDText)
+			if err != nil {
+				rows.Close()
+				return domain.Order{}, domain.ErrInvalidInput
+			}
+			item.SellerID = &sellerID
 		}
 		cartRows = append(cartRows, item)
 	}
@@ -109,6 +123,8 @@ func (r *OrderRepository) Checkout(ctx context.Context, userID uuid.UUID, place 
 			ProductID:   item.ProductID,
 			ProductName: item.Name,
 			SKU:         item.SKU,
+			SellerID:    item.SellerID,
+			SellerName:  item.SellerName,
 			UnitPrice:   item.UnitPrice,
 			Quantity:    item.Quantity,
 			LineTotal:   lineTotal,
@@ -146,10 +162,22 @@ func (r *OrderRepository) Checkout(ctx context.Context, userID uuid.UUID, place 
 	for index := range items {
 		items[index].OrderID = order.ID
 		err = tx.QueryRow(ctx, `
-			INSERT INTO order_items (id, order_id, product_id, product_name, sku, unit_price, quantity, line_total, currency)
-			VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+			INSERT INTO order_items (
+				id,
+				order_id,
+				product_id,
+				product_name,
+				sku,
+				seller_id,
+				seller_store_name,
+				unit_price,
+				quantity,
+				line_total,
+				currency
+			)
+			VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
 			RETURNING created_at
-		`, items[index].ID, order.ID, items[index].ProductID, items[index].ProductName, items[index].SKU, items[index].UnitPrice, items[index].Quantity, items[index].LineTotal, items[index].Currency).Scan(
+		`, items[index].ID, order.ID, items[index].ProductID, items[index].ProductName, items[index].SKU, items[index].SellerID, items[index].SellerName, items[index].UnitPrice, items[index].Quantity, items[index].LineTotal, items[index].Currency).Scan(
 			&items[index].CreatedAt,
 		)
 		if err != nil {
@@ -264,8 +292,8 @@ func (r *OrderRepository) loadOrderItems(ctx context.Context, db orderQueryer, o
 	}
 
 	rows, err := db.Query(ctx, `
-		SELECT id, order_id, product_id, product_name, sku, unit_price::double precision,
-		       quantity, line_total::double precision, currency, created_at
+		SELECT id, order_id, product_id, product_name, sku, COALESCE(seller_id::text, ''), COALESCE(seller_store_name, ''),
+		       unit_price::double precision, quantity, line_total::double precision, currency, created_at
 		FROM order_items
 		WHERE order_id = ANY($1)
 		ORDER BY created_at ASC, id ASC
@@ -277,12 +305,15 @@ func (r *OrderRepository) loadOrderItems(ctx context.Context, db orderQueryer, o
 
 	for rows.Next() {
 		var item domain.OrderItem
+		var sellerIDText string
 		if err := rows.Scan(
 			&item.ID,
 			&item.OrderID,
 			&item.ProductID,
 			&item.ProductName,
 			&item.SKU,
+			&sellerIDText,
+			&item.SellerName,
 			&item.UnitPrice,
 			&item.Quantity,
 			&item.LineTotal,
@@ -290,6 +321,13 @@ func (r *OrderRepository) loadOrderItems(ctx context.Context, db orderQueryer, o
 			&item.CreatedAt,
 		); err != nil {
 			return nil, mapError(err)
+		}
+		if sellerIDText != "" {
+			sellerID, err := uuid.Parse(sellerIDText)
+			if err != nil {
+				return nil, domain.ErrInvalidInput
+			}
+			item.SellerID = &sellerID
 		}
 		itemsByOrderID[item.OrderID] = append(itemsByOrderID[item.OrderID], item)
 	}

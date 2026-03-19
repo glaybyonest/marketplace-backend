@@ -290,7 +290,7 @@ func TestAdminService(t *testing.T) {
 			Page:       1,
 			Limit:      10,
 			IsActive:   ptrBool(true),
-			Query:      "cement",
+			Query:      "smartphone",
 			MinPrice:   ptrFloat(100),
 			MaxPrice:   ptrFloat(500),
 			InStock:    ptrBool(true),
@@ -305,7 +305,7 @@ func TestAdminService(t *testing.T) {
 		entry := audit.entries[len(audit.entries)-1]
 		assert.Equal(t, "admin.products_listed", entry.Action)
 		assert.Equal(t, "product", entry.EntityType)
-		assert.Equal(t, "cement", entry.Metadata["query"])
+		assert.Equal(t, "smartphone", entry.Metadata["query"])
 		assert.Equal(t, rootID.String(), entry.Metadata["category_id"])
 		assert.Equal(t, 1, entry.Metadata["items_count"])
 		assert.Equal(t, 1, entry.Metadata["total_items"])

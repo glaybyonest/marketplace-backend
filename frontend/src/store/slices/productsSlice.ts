@@ -24,7 +24,7 @@ const initialState: ProductsState = {
   selectedProduct: null,
   filters: {
     page: 1,
-    limit: 12,
+    limit: 20,
     sort: 'new',
   },
   page: 1,

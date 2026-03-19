@@ -6,24 +6,14 @@ import { addCartItemThunk } from '@/store/slices/cartSlice'
 import { addFavoriteThunk, removeFavoriteThunk } from '@/store/slices/favoritesSlice'
 import type { Product } from '@/types/domain'
 import { formatCurrency } from '@/utils/format'
+import { resolveProductImage } from '@/utils/media'
+import { formatProductSpecLabel, formatProductSpecValue, getProductSpecEntries } from '@/utils/productSpecs'
 import { getProductPath } from '@/utils/productRef'
 
 import styles from '@/components/catalog/ProductCard.module.scss'
 
 interface ProductCardProps {
   product: Product
-}
-
-const FALLBACK_IMAGE = 'https://placehold.co/1200x900/f3f4f6/6b7280?text=No+Image'
-
-const formatSpecValue = (value: string | number | boolean | null) => {
-  if (value === null) {
-    return '-'
-  }
-  if (typeof value === 'boolean') {
-    return value ? 'Да' : 'Нет'
-  }
-  return String(value)
 }
 
 export const ProductCard = ({ product }: ProductCardProps) => {
@@ -33,14 +23,15 @@ export const ProductCard = ({ product }: ProductCardProps) => {
   const auth = useAppSelector((state) => state.auth)
   const favoriteItems = useAppSelector((state) => state.favorites.items)
   const cartStatus = useAppSelector((state) => state.cart.mutationStatus)
-  const image = product.imageUrl ?? product.images[0] ?? FALLBACK_IMAGE
+  const image = useMemo(() => resolveProductImage(product), [product])
 
-  const specPreview = useMemo(() => Object.entries(product.specs ?? {}).slice(0, 2), [product.specs])
+  const specPreview = useMemo(() => getProductSpecEntries(product.specs, 2), [product.specs])
 
   const discount = Math.min(32, Math.max(7, Math.round((product.stock ?? 0) / 10)))
   const oldPrice = Math.round(product.price * (1 + discount / 100))
   const isFavorite = favoriteItems.some((item) => item.id === product.id)
   const productPath = getProductPath(product)
+  const sellerLabel = product.sellerName || 'Партнёрский магазин'
 
   const handleFavorite = async () => {
     if (!auth.isAuthenticated) {
@@ -109,8 +100,8 @@ export const ProductCard = ({ product }: ProductCardProps) => {
           <ul className={styles.specList}>
             {specPreview.map(([key, value]) => (
               <li key={key}>
-                <span>{key.replaceAll('_', ' ')}</span>
-                <strong>{formatSpecValue(value)}</strong>
+                <span>{formatProductSpecLabel(key)}</span>
+                <strong>{formatProductSpecValue(value, key)}</strong>
               </li>
             ))}
           </ul>
@@ -121,13 +112,12 @@ export const ProductCard = ({ product }: ProductCardProps) => {
         <div className={styles.priceBlock}>
           <span className={styles.oldPrice}>{formatCurrency(oldPrice, product.currency)}</span>
           <strong className={styles.price}>{formatCurrency(product.price, product.currency)}</strong>
-          {product.unit ? <span className={styles.unit}>за {product.unit}</span> : null}
         </div>
 
         <div className={styles.footerRow}>
           <div>
-            <span className={styles.deliveryText}>Доставка и самовывоз</span>
-            <span className={styles.deliveryTextSecondary}>Через ваш backend checkout</span>
+            <span className={styles.deliveryText}>{sellerLabel}</span>
+            <span className={styles.deliveryTextSecondary}>Доставка и самовывоз</span>
           </div>
           <button
             type="button"
