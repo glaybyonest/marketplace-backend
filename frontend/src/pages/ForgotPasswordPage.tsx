@@ -38,33 +38,12 @@ export const ForgotPasswordPage = () => {
   }
 
   return (
-    <div className={styles.page}>
-      <section className={styles.showcase}>
-        <div>
-          <span className={styles.showcaseBadge}>Восстановление</span>
-          <h2 className={styles.showcaseTitle}>Восстановите доступ без поддержки и ручных действий</h2>
-          <p className={styles.showcaseText}>
-            Достаточно указать email, чтобы получить безопасную ссылку и быстро вернуть доступ к аккаунту.
-          </p>
-        </div>
-
-        <div className={styles.showcaseList}>
-          <div>
-            <strong>Безопасная ссылка</strong>
-            <p>Письмо содержит одноразовый токен для смены пароля.</p>
-          </div>
-          <div>
-            <strong>Тот же аккаунт</strong>
-            <p>После обновления пароля история заказов и адреса никуда не пропадут.</p>
-          </div>
-        </div>
-      </section>
-
+    <div className={`${styles.page} ${styles.pageCompact}`}>
       <section className={styles.card}>
         <div className={styles.cardHeader}>
           <span className="badge-pill">Пароль</span>
           <h1>Забыли пароль?</h1>
-          <p>Укажите email, и мы отправим ссылку для безопасного восстановления доступа.</p>
+          <p>Введите email, и мы отправим ссылку для безопасного восстановления доступа.</p>
         </div>
 
         {message ? <div className={styles.notice}>{message}</div> : null}

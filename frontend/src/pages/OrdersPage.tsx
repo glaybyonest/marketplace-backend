@@ -10,7 +10,7 @@ import styles from '@/pages/OrdersPage.module.scss'
 
 const statusLabels: Record<string, string> = {
   pending: 'В обработке',
-  cancelled: 'Отменён',
+  cancelled: 'Отменен',
 }
 
 export const OrdersPage = () => {
@@ -27,7 +27,6 @@ export const OrdersPage = () => {
         <div>
           <span className="badge-pill">Заказы</span>
           <h1>История покупок</h1>
-          <p>Здесь собраны все оформленные заказы с адресом доставки, составом корзины и итоговой суммой.</p>
         </div>
       </header>
 
@@ -61,7 +60,7 @@ export const OrdersPage = () => {
                   <li key={item.id}>
                     <span>
                       {item.title} x {item.quantity}
-                      {item.sellerName ? ` • ${item.sellerName}` : ''}
+                      {item.sellerName ? ` | ${item.sellerName}` : ''}
                     </span>
                     <strong>{formatCurrency(item.lineTotal, item.currency ?? order.currency)}</strong>
                   </li>

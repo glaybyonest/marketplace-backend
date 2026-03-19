@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { Link, NavLink, useLocation, useNavigate } from 'react-router-dom'
 
 import { SearchBar } from '@/components/catalog/SearchBar'
+import { RazeLogo } from '@/components/common/RazeLogo'
 import { utilityLinks } from '@/config/storefront'
 import { useAppDispatch, useAppSelector } from '@/store/hooks'
 import { logoutThunk } from '@/store/slices/authSlice'
@@ -228,9 +229,11 @@ export const Header = () => {
       <div className={styles.mainBar}>
         <div className={styles.mainInner}>
           <div className={styles.brandRow}>
-            <Link to="/" className={styles.brand} aria-label="На главную">
-              <span className={styles.brandMark}>M</span>
-              <span className={styles.brandText}>Маркет</span>
+            <Link to="/" className={styles.brand} aria-label="raze">
+              <span className={styles.brandMark}>
+                <RazeLogo title="raze" />
+              </span>
+              <span className={styles.brandText}>raze</span>
             </Link>
 
             <button

@@ -7,6 +7,19 @@
   padding: 8px 0 20px;
 }
 
+.pageCompact {
+  grid-template-columns: minmax(0, 560px);
+  justify-content: center;
+  align-items: start;
+  padding-top: 24px;
+}
+
+.pageCompact .card {
+  width: 100%;
+  max-width: 560px;
+  justify-self: stretch;
+}
+
 .showcase {
   position: relative;
   display: grid;
@@ -15,9 +28,9 @@
   padding: 32px;
   border-radius: 34px;
   overflow: hidden;
-  background: linear-gradient(135deg, #005bff, #0042c6 58%, #1a7cff);
+  background: linear-gradient(145deg, #12090b, #2c1014 48%, #a0151b 100%);
   color: #fff;
-  box-shadow: 0 28px 72px rgb(0 91 255 / 0.22);
+  box-shadow: 0 28px 72px rgb(var(--color-primary-dark-rgb) / 0.28);
 }
 
 .showcase::before {
@@ -143,7 +156,7 @@
 .modeButtonActive {
   background: var(--color-primary-soft);
   color: var(--color-primary);
-  border-color: rgb(0 91 255 / 0.18);
+  border-color: rgb(var(--color-primary-rgb) / 0.18);
 }
 
 .notice,
@@ -155,8 +168,8 @@
 }
 
 .notice {
-  background: #eef4ff;
-  color: #214476;
+  background: var(--color-primary-soft);
+  color: #7b1b20;
 }
 
 .success {
@@ -193,8 +206,8 @@
 
 .form input:focus {
   outline: none;
-  border-color: rgb(0 91 255 / 0.44);
-  box-shadow: 0 0 0 4px rgb(0 91 255 / 0.08);
+  border-color: rgb(var(--color-primary-rgb) / 0.44);
+  box-shadow: 0 0 0 4px rgb(var(--color-primary-rgb) / 0.1);
 }
 
 .form button {
@@ -202,7 +215,7 @@
   border: none;
   border-radius: 18px;
   padding: 0 18px;
-  background: linear-gradient(135deg, #005bff, #0046cc);
+  background: linear-gradient(135deg, var(--color-primary), #7d0f15);
   color: #fff;
   font-weight: 800;
   cursor: pointer;

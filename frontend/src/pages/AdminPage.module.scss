@@ -8,9 +8,9 @@
   gap: 18px;
   padding: 28px 30px;
   border-radius: 34px;
-  background: linear-gradient(135deg, #0f172a, #102e68 60%, #1b5cff);
+  background: linear-gradient(145deg, #12090b, #2b0f14 56%, #a2151b);
   color: #fff;
-  box-shadow: 0 28px 72px rgb(15 23 42 / 0.22);
+  box-shadow: 0 28px 72px rgb(var(--color-primary-dark-rgb) / 0.26);
 }
 
 .hero h1,
@@ -173,7 +173,7 @@
 
 .primaryButton {
   border: none;
-  background: linear-gradient(135deg, #005bff, #0045cb);
+  background: linear-gradient(135deg, var(--color-primary), #7d0f15);
   color: #fff;
 }
 
@@ -184,9 +184,9 @@
 }
 
 .ghostButton {
-  border: 1px solid rgb(0 91 255 / 0.16);
-  background: #eef4ff;
-  color: #005bff;
+  border: 1px solid rgb(var(--color-primary-rgb) / 0.16);
+  background: var(--color-primary-soft);
+  color: var(--color-primary);
 }
 
 .dangerButton {
@@ -204,7 +204,7 @@
 .empty {
   padding: 18px;
   border-radius: 24px;
-  background: #fbfcff;
+  background: #fffafa;
   border: 1px solid var(--color-border);
 }
 
@@ -241,8 +241,8 @@
 }
 
 .badgeMuted {
-  background: #eef4ff;
-  color: #005bff;
+  background: var(--color-primary-soft);
+  color: var(--color-primary);
 }
 
 .badgeDanger {
@@ -255,7 +255,7 @@
   height: 84px;
   border-radius: 20px;
   object-fit: cover;
-  background: #f3f6fb;
+  background: #f6eeee;
   border: 1px solid var(--color-border);
 }
 
@@ -278,8 +278,8 @@
   min-height: 32px;
   padding: 0 12px;
   border-radius: var(--radius-full);
-  background: #eef4ff;
-  color: #005bff;
+  background: var(--color-primary-soft);
+  color: var(--color-primary);
   font-size: 0.82rem;
 }
 

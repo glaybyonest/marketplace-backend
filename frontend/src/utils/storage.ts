@@ -2,6 +2,7 @@ import { AUTH_CSRF_COOKIE_NAME, isCookieAuthMode } from '@/config/auth'
 
 const ACCESS_TOKEN_KEY = 'marketplace_access_token'
 const REFRESH_TOKEN_KEY = 'marketplace_refresh_token'
+const PLACE_ORDER_KEY_PREFIX = 'marketplace_places_order'
 
 const readCookie = (name: string): string | null => {
   if (typeof document === 'undefined') {
@@ -60,5 +61,40 @@ export const storage = {
   },
   getCSRFToken(): string | null {
     return readCookie(AUTH_CSRF_COOKIE_NAME)
+  },
+  getPlaceOrder(scope = 'default'): string[] {
+    if (typeof window === 'undefined') {
+      return []
+    }
+
+    try {
+      const raw = localStorage.getItem(`${PLACE_ORDER_KEY_PREFIX}:${scope}`)
+      if (!raw) {
+        return []
+      }
+
+      const parsed = JSON.parse(raw)
+      if (!Array.isArray(parsed)) {
+        return []
+      }
+
+      return parsed.filter((value): value is string => typeof value === 'string')
+    } catch {
+      return []
+    }
+  },
+  setPlaceOrder(scope = 'default', ids: string[]) {
+    if (typeof window === 'undefined') {
+      return
+    }
+
+    localStorage.setItem(`${PLACE_ORDER_KEY_PREFIX}:${scope}`, JSON.stringify(ids))
+  },
+  clearPlaceOrder(scope = 'default') {
+    if (typeof window === 'undefined') {
+      return
+    }
+
+    localStorage.removeItem(`${PLACE_ORDER_KEY_PREFIX}:${scope}`)
   },
 }

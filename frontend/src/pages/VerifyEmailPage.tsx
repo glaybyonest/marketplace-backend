@@ -43,7 +43,7 @@ export const VerifyEmailPage = () => {
           return
         }
         setConfirmStatus('success')
-        setMessage('Email подтверждён. Теперь можно входить в аккаунт.')
+        setMessage('Email подтверждён. Теперь можно войти в аккаунт.')
       })
       .catch((requestError: unknown) => {
         if (cancelled) {
@@ -80,33 +80,12 @@ export const VerifyEmailPage = () => {
   }
 
   return (
-    <div className={styles.page}>
-      <section className={styles.showcase}>
-        <div>
-          <span className={styles.showcaseBadge}>Подтверждение</span>
-          <h2 className={styles.showcaseTitle}>Активируйте email и включите все сценарии аккаунта</h2>
-          <p className={styles.showcaseText}>
-            После подтверждения станут доступны вход, восстановление пароля и полноценная работа личного кабинета.
-          </p>
-        </div>
-
-        <div className={styles.showcaseList}>
-          <div>
-            <strong>Без ручной модерации</strong>
-            <p>Подтверждение проходит автоматически по ссылке из письма.</p>
-          </div>
-          <div>
-            <strong>Повторная отправка</strong>
-            <p>Если письмо не дошло, можно сразу запросить новую ссылку.</p>
-          </div>
-        </div>
-      </section>
-
+    <div className={`${styles.page} ${styles.pageCompact}`}>
       <section className={styles.card}>
         <div className={styles.cardHeader}>
           <span className="badge-pill">Email</span>
           <h1>Подтвердите почту</h1>
-          <p>Это нужно для безопасного входа и восстановления доступа к аккаунту.</p>
+          <p>Это нужно для безопасного входа, восстановления доступа и работы с аккаунтом.</p>
         </div>
 
         {confirmStatus === 'loading' ? <AppLoader label="Проверяем ссылку..." /> : null}

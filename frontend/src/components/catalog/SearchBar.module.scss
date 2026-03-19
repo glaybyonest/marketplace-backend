@@ -23,8 +23,8 @@
 
 .input:focus {
   outline: none;
-  border-color: rgb(0 91 255 / 0.5);
-  box-shadow: 0 0 0 4px rgb(0 91 255 / 0.12);
+  border-color: rgb(var(--color-primary-rgb) / 0.5);
+  box-shadow: 0 0 0 4px rgb(var(--color-primary-rgb) / 0.12);
 }
 
 .input::placeholder {
@@ -77,15 +77,15 @@
   min-height: 52px;
   padding: 0 20px;
   border-radius: 16px;
-  background: linear-gradient(135deg, #0d7dff, #0051da);
+  background: linear-gradient(135deg, var(--color-primary), #7d0f15);
   color: #fff;
   font-weight: 800;
-  box-shadow: 0 14px 24px rgb(0 91 255 / 0.18);
+  box-shadow: 0 14px 24px rgb(var(--color-primary-rgb) / 0.2);
 }
 
 .button:hover {
   transform: translateY(-1px);
-  box-shadow: 0 18px 30px rgb(0 91 255 / 0.24);
+  box-shadow: 0 18px 30px rgb(var(--color-primary-rgb) / 0.24);
 }
 
 .buttonHeader {

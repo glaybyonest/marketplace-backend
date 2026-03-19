@@ -2,15 +2,15 @@
   position: sticky;
   top: 0;
   z-index: var(--z-sticky);
-  background: rgb(255 255 255 / 0.94);
+  background: rgb(255 250 250 / 0.94);
   backdrop-filter: blur(18px);
-  border-bottom: 1px solid rgb(223 230 243 / 0.92);
-  box-shadow: 0 12px 32px rgb(15 59 153 / 0.06);
+  border-bottom: 1px solid rgb(232 220 220 / 0.92);
+  box-shadow: 0 12px 32px rgb(var(--color-primary-dark-rgb) / 0.08);
 }
 
 .utilityBar {
-  border-bottom: 1px solid rgb(223 230 243 / 0.8);
-  background: linear-gradient(180deg, rgb(255 255 255 / 0.86), rgb(249 251 255 / 0.92));
+  border-bottom: 1px solid rgb(232 220 220 / 0.8);
+  background: linear-gradient(180deg, rgb(255 252 252 / 0.9), rgb(255 245 245 / 0.94));
 }
 
 .utilityInner,
@@ -106,23 +106,23 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 42px;
-  height: 42px;
-  border-radius: 14px;
-  background: linear-gradient(135deg, #0d7dff, #0051da);
-  color: #fff;
-  font-family: var(--font-family-display);
-  font-size: 1.2rem;
-  font-weight: 800;
-  box-shadow: 0 12px 24px rgb(0 91 255 / 0.26);
+  width: 50px;
+  height: 50px;
+  flex: 0 0 auto;
+  filter: drop-shadow(0 14px 22px rgb(var(--color-primary-rgb) / 0.18));
+}
+
+.brandMark svg {
+  width: 100%;
+  height: 100%;
 }
 
 .brandText {
   font-family: var(--font-family-display);
-  font-size: 1.32rem;
-  font-weight: 800;
+  font-size: 1.42rem;
+  font-weight: 900;
   color: var(--color-primary-dark);
-  letter-spacing: -0.03em;
+  letter-spacing: -0.04em;
 }
 
 .catalogButton {
@@ -132,15 +132,15 @@
   min-height: 48px;
   padding: 0 18px;
   border-radius: 16px;
-  background: linear-gradient(135deg, #0c66ff, #004ed4);
+  background: linear-gradient(135deg, var(--color-primary), #7d0f15);
   color: #fff;
   font-weight: 700;
-  box-shadow: 0 12px 24px rgb(0 91 255 / 0.24);
+  box-shadow: 0 14px 24px rgb(var(--color-primary-rgb) / 0.24);
 }
 
 .catalogButtonActive {
-  background: linear-gradient(135deg, #004ed4, #003db0);
-  box-shadow: 0 16px 30px rgb(0 91 255 / 0.28);
+  background: linear-gradient(135deg, #a41219, #650b10);
+  box-shadow: 0 18px 30px rgb(var(--color-primary-rgb) / 0.28);
 }
 
 .catalogBurger {
@@ -260,10 +260,10 @@
 .authButton {
   justify-content: center;
   padding: 0 18px;
-  background: var(--color-primary);
+  background: linear-gradient(135deg, var(--color-primary), #7d0f15);
   color: #fff;
   font-weight: 800;
-  box-shadow: 0 12px 24px rgb(0 91 255 / 0.22);
+  box-shadow: 0 14px 24px rgb(var(--color-primary-rgb) / 0.22);
 }
 
 .authButton:hover {
@@ -313,9 +313,9 @@
   right: 0;
   z-index: var(--z-dropdown);
   display: block;
-  border-top: 1px solid rgb(223 230 243 / 0.8);
-  background: linear-gradient(180deg, rgb(255 255 255 / 0.98), #f8fbff);
-  box-shadow: 0 18px 40px rgb(10 36 99 / 0.1);
+  border-top: 1px solid rgb(232 220 220 / 0.8);
+  background: linear-gradient(180deg, rgb(255 252 252 / 0.98), #fff6f6);
+  box-shadow: 0 18px 40px rgb(var(--color-primary-dark-rgb) / 0.14);
   animation: fadeInUp var(--transition-base) ease-out;
 }
 

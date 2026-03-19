@@ -50,16 +50,6 @@
   font: inherit;
 }
 
-.row {
-  display: grid;
-  gap: 12px;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-}
-
-.row > * {
-  min-width: 0;
-}
-
 .actions {
   display: flex;
   flex-wrap: wrap;
@@ -80,6 +70,63 @@
   background: #fff;
   border: 1px solid var(--color-border);
   box-shadow: var(--shadow-card);
+  cursor: grab;
+  transition:
+    transform var(--transition-fast),
+    box-shadow var(--transition-fast),
+    border-color var(--transition-fast),
+    background-color var(--transition-fast);
+}
+
+.item:hover {
+  transform: translateY(-1px);
+  box-shadow: var(--shadow-hover);
+}
+
+.itemPrimary {
+  border-color: rgb(var(--color-primary-rgb) / 0.18);
+  background: linear-gradient(180deg, #fff, #fff6f6);
+}
+
+.itemDragging {
+  opacity: 0.64;
+  transform: scale(0.99);
+  cursor: grabbing;
+}
+
+.itemDropTarget {
+  border-color: rgb(var(--color-primary-rgb) / 0.34);
+  box-shadow: 0 0 0 4px rgb(var(--color-primary-rgb) / 0.12);
+}
+
+.itemMain {
+  display: grid;
+  gap: 12px;
+  min-width: 0;
+}
+
+.itemMeta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px 12px;
+}
+
+.itemBadge {
+  display: inline-flex;
+  align-items: center;
+  min-height: 30px;
+  padding: 0 12px;
+  border-radius: 999px;
+  background: var(--color-primary-soft);
+  color: var(--color-primary);
+  font-size: 0.8rem;
+  font-weight: 800;
+}
+
+.itemMeta small {
+  color: var(--color-text-muted);
+  font-size: 0.82rem;
 }
 
 .item h3,
@@ -92,20 +139,13 @@
   color: var(--color-text-secondary);
 }
 
-.item small {
-  display: block;
-  margin-top: 8px;
-  color: var(--color-text-muted);
-}
-
 .empty {
   display: grid;
   gap: 10px;
 }
 
 @media (max-width: 960px) {
-  .layout,
-  .row {
+  .layout {
     grid-template-columns: 1fr;
   }
 

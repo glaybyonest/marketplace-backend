@@ -22,23 +22,23 @@ const modeMeta: Record<LoginMode, { label: string; title: string; description: s
   password: {
     label: 'Пароль',
     title: 'Вход по email и паролю',
-    description: 'Основной сценарий: введите email и пароль, чтобы сразу попасть в аккаунт.',
+    description: 'Введите email и пароль, чтобы сразу открыть личный кабинет.',
   },
   email_code: {
     label: 'Код на email',
     title: 'Вход по коду из письма',
-    description: 'Мы отправим одноразовый код на почту, и им можно будет войти без пароля.',
+    description: 'Отправим одноразовый код на почту и пустим в аккаунт без пароля.',
   },
   phone_code: {
     label: 'Код на телефон',
-    title: 'Вход по коду на телефон',
-    description: 'Используйте номер, привязанный к аккаунту. Одноразовый код придёт в SMS.',
+    title: 'Вход по SMS-коду',
+    description: 'Используйте номер телефона, привязанный к аккаунту, чтобы быстро войти.',
   },
 }
 
 const buildCodeMessage = (maskedDestination?: string, expiresIn?: number) => {
   const destinationPart = maskedDestination ? ` на ${maskedDestination}` : ''
-  const expiresPart = expiresIn ? ` Код действует примерно ${Math.max(1, Math.round(expiresIn / 60))} мин.` : ''
+  const expiresPart = expiresIn ? ` Код действует около ${Math.max(1, Math.round(expiresIn / 60))} мин.` : ''
   return `Мы отправили код${destinationPart}.${expiresPart}`
 }
 
@@ -154,32 +154,11 @@ export const LoginPage = () => {
   }
 
   return (
-    <div className={styles.page}>
-      <section className={styles.showcase}>
-        <div>
-          <span className={styles.showcaseBadge}>Вход в аккаунт</span>
-          <h2 className={styles.showcaseTitle}>Один экран входа для пароля, email-кода и телефона</h2>
-          <p className={styles.showcaseText}>
-            Выберите привычный способ авторизации: пароль, код из письма или код на телефон. Все варианты ведут в один и тот же аккаунт.
-          </p>
-        </div>
-
-        <div className={styles.showcaseList}>
-          <div>
-            <strong>Классический вход</strong>
-            <p>Email и пароль остаются основным способом доступа к аккаунту.</p>
-          </div>
-          <div>
-            <strong>Быстрый код</strong>
-            <p>Если пароль неудобен, можно запросить одноразовый код на email или телефон.</p>
-          </div>
-        </div>
-      </section>
-
+    <div className={`${styles.page} ${styles.pageCompact}`}>
       <section className={styles.card}>
         <div className={styles.cardHeader}>
           <span className="badge-pill">Вход</span>
-          <h1>Войдите в аккаунт</h1>
+          <h1>{modeMeta[mode].title}</h1>
           <p>{modeMeta[mode].description}</p>
         </div>
 

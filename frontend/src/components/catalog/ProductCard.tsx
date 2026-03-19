@@ -31,7 +31,7 @@ export const ProductCard = ({ product }: ProductCardProps) => {
   const oldPrice = Math.round(product.price * (1 + discount / 100))
   const isFavorite = favoriteItems.some((item) => item.id === product.id)
   const productPath = getProductPath(product)
-  const sellerLabel = product.sellerName || 'Партнёрский магазин'
+  const sellerLabel = product.sellerName || 'Партнерский магазин'
 
   const handleFavorite = async () => {
     if (!auth.isAuthenticated) {
@@ -81,9 +81,6 @@ export const ProductCard = ({ product }: ProductCardProps) => {
           className={imageLoaded ? styles.imageLoaded : styles.image}
           onLoad={() => setImageLoaded(true)}
         />
-        <span className={`${styles.stockBadge} ${product.stock && product.stock > 0 ? styles.stockBadgeActive : styles.stockBadgeEmpty}`}>
-          {product.stock && product.stock > 0 ? `В наличии: ${product.stock}` : 'Под заказ'}
-        </span>
       </Link>
 
       <div className={styles.body}>
@@ -106,7 +103,9 @@ export const ProductCard = ({ product }: ProductCardProps) => {
             ))}
           </ul>
         ) : (
-          <p className={styles.description}>{product.description || 'Откройте карточку товара, чтобы посмотреть детали и характеристики.'}</p>
+          <p className={styles.description}>
+            {product.description || 'Откройте карточку товара, чтобы посмотреть детали и характеристики.'}
+          </p>
         )}
 
         <div className={styles.priceBlock}>
@@ -124,8 +123,14 @@ export const ProductCard = ({ product }: ProductCardProps) => {
             className={styles.cartButton}
             onClick={handleAddToCart}
             disabled={!product.stock || cartStatus === 'loading'}
+            aria-label="Добавить в корзину"
+            title="Добавить в корзину"
           >
-            В корзину
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M4 5h2l1.2 8.1a1.7 1.7 0 0 0 1.7 1.4h7.7a1.7 1.7 0 0 0 1.7-1.3L20 8H7.1" />
+              <circle cx="10" cy="19" r="1.2" />
+              <circle cx="17" cy="19" r="1.2" />
+            </svg>
           </button>
         </div>
       </div>

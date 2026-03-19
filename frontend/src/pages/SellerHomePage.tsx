@@ -168,7 +168,7 @@ export const SellerHomePage = () => {
 
   if (!isSeller) {
     return (
-      <div className={styles.page}>
+      <div className={`${styles.page} ${styles.setupPage}`}>
         <section className={styles.hero}>
           <div className={styles.heroTop}>
             <div className={styles.heroCopy}>
@@ -307,9 +307,9 @@ export const SellerHomePage = () => {
 
             <div className={styles.previewCard}>
               <div
-                className={styles.previewBanner}
+                className={`${styles.previewBanner} ${styles.previewBannerSetup}`}
                 style={{
-                  backgroundImage: `linear-gradient(rgb(15 71 61 / 0.46), rgb(15 71 61 / 0.56)), url("${previewBanner}")`,
+                  backgroundImage: `linear-gradient(rgb(27 10 13 / 0.56), rgb(27 10 13 / 0.7)), url("${previewBanner}")`,
                   backgroundSize: 'cover',
                   backgroundPosition: 'center',
                 }}

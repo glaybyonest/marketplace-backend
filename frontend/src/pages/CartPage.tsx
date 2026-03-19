@@ -40,6 +40,7 @@ export const CartPage = () => {
       dispatch(removeCartItemThunk(productId))
       return
     }
+
     dispatch(updateCartItemThunk({ productId, quantity: quantity - 1 }))
   }
 
@@ -47,6 +48,7 @@ export const CartPage = () => {
     if (stock !== undefined && quantity >= stock) {
       return
     }
+
     dispatch(updateCartItemThunk({ productId, quantity: quantity + 1 }))
   }
 
@@ -56,7 +58,6 @@ export const CartPage = () => {
         <div>
           <span className="badge-pill">Корзина</span>
           <h1>Проверьте состав заказа</h1>
-          <p>Здесь можно уточнить количество, сверить магазины и перейти к оформлению покупки.</p>
         </div>
         <div className={styles.headerActions}>
           <Link to="/" className="action-secondary">
@@ -98,8 +99,8 @@ export const CartPage = () => {
                       </Link>
                       <p className={styles.meta}>
                         {item.sku ? `Артикул ${item.sku}` : 'Товар из каталога'}
-                        {item.sellerName ? ` • ${item.sellerName}` : ''}
-                        {item.stock !== undefined ? ` • Доступно ${item.stock}` : ''}
+                        {item.sellerName ? ` | ${item.sellerName}` : ''}
+                        {item.stock !== undefined ? ` | Доступно ${item.stock}` : ''}
                       </p>
                     </div>
                     <button
@@ -175,17 +176,6 @@ export const CartPage = () => {
             <Link to="/checkout" className="action-primary">
               Перейти к оформлению
             </Link>
-
-            <div className={styles.notes}>
-              <div>
-                <strong>Оформление без сюрпризов</strong>
-                <p>На следующем шаге вы подтвердите адрес, состав покупки и итоговую сумму заказа.</p>
-              </div>
-              <div>
-                <strong>Изменения сохраняются сразу</strong>
-                <p>Количество и удаление товаров синхронизируются в корзине мгновенно.</p>
-              </div>
-            </div>
           </aside>
         </div>
       )}

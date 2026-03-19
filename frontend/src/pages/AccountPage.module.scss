@@ -9,9 +9,9 @@
   gap: 20px;
   padding: 28px 30px;
   border-radius: 34px;
-  background: linear-gradient(135deg, #005bff, #0046cc 58%, #1b7cff);
+  background: linear-gradient(145deg, #12090b, #2b0f14 54%, #a2151b);
   color: #fff;
-  box-shadow: 0 28px 72px rgb(0 91 255 / 0.2);
+  box-shadow: 0 28px 72px rgb(var(--color-primary-dark-rgb) / 0.26);
 }
 
 .hero h1 {

@@ -131,26 +131,26 @@ const iconMarkupByKey: Record<CategoryIconKey, string> = {
 }
 
 const categoryVisualsBySlug: Record<string, CategoryVisual> = {
-  'electronics-gadgets': { iconKey: 'devices', accent: '#0f7cff' },
-  'smartphones-accessories': { iconKey: 'phone', accent: '#3b82f6' },
-  'computers-office': { iconKey: 'computer', accent: '#005bff' },
-  'home-appliances': { iconKey: 'appliance', accent: '#ef8f00' },
-  'home-kitchen': { iconKey: 'kitchen', accent: '#d97706' },
-  'furniture-interior': { iconKey: 'furniture', accent: '#8b5e34' },
-  'womens-clothing': { iconKey: 'dress', accent: '#ec4899' },
-  'mens-clothing': { iconKey: 'shirt', accent: '#2563eb' },
-  footwear: { iconKey: 'shoe', accent: '#0f766e' },
-  kids: { iconKey: 'kids', accent: '#f59e0b' },
-  'beauty-care': { iconKey: 'beauty', accent: '#db2777' },
-  'sports-leisure': { iconKey: 'sport', accent: '#059669' },
-  auto: { iconKey: 'auto', accent: '#475569' },
-  'tools-repair': { iconKey: 'tools', accent: '#dc2626' },
-  'pet-supplies': { iconKey: 'pet', accent: '#7c3aed' },
-  'stationery-books': { iconKey: 'books', accent: '#0284c7' },
-  'toys-hobby': { iconKey: 'toys', accent: '#f97316' },
-  'groceries-drinks': { iconKey: 'grocery', accent: '#16a34a' },
-  garden: { iconKey: 'garden', accent: '#65a30d' },
-  'jewelry-accessories': { iconKey: 'jewelry', accent: '#b45309' },
+  'electronics-gadgets': { iconKey: 'devices', accent: '#d81f27' },
+  'smartphones-accessories': { iconKey: 'phone', accent: '#f04e55' },
+  'computers-office': { iconKey: 'computer', accent: '#b5171f' },
+  'home-appliances': { iconKey: 'appliance', accent: '#97141a' },
+  'home-kitchen': { iconKey: 'kitchen', accent: '#b4412c' },
+  'furniture-interior': { iconKey: 'furniture', accent: '#5b2426' },
+  'womens-clothing': { iconKey: 'dress', accent: '#d42d52' },
+  'mens-clothing': { iconKey: 'shirt', accent: '#87131a' },
+  footwear: { iconKey: 'shoe', accent: '#4a1b1f' },
+  kids: { iconKey: 'kids', accent: '#ff6b60' },
+  'beauty-care': { iconKey: 'beauty', accent: '#c52146' },
+  'sports-leisure': { iconKey: 'sport', accent: '#8f161c' },
+  auto: { iconKey: 'auto', accent: '#2f2a2b' },
+  'tools-repair': { iconKey: 'tools', accent: '#d81f27' },
+  'pet-supplies': { iconKey: 'pet', accent: '#7a1d30' },
+  'stationery-books': { iconKey: 'books', accent: '#9a232b' },
+  'toys-hobby': { iconKey: 'toys', accent: '#df5a40' },
+  'groceries-drinks': { iconKey: 'grocery', accent: '#a61e22' },
+  garden: { iconKey: 'garden', accent: '#7f3128' },
+  'jewelry-accessories': { iconKey: 'jewelry', accent: '#8b2f23' },
 }
 
 const categoryAliases: Array<{ match: RegExp; slug: keyof typeof categoryVisualsBySlug }> = [
@@ -178,7 +178,7 @@ const categoryAliases: Array<{ match: RegExp; slug: keyof typeof categoryVisuals
 
 export const defaultCategoryVisual: CategoryVisual = {
   iconKey: 'grid',
-  accent: '#005bff',
+  accent: '#d81f27',
 }
 
 export const resolveCategoryVisual = (params: { slug?: string; name?: string; title?: string }) => {

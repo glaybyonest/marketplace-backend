@@ -97,34 +97,12 @@ export const RegisterPage = () => {
   const shownError = localError ?? authState.error
 
   return (
-    <div className={styles.page}>
-      <section className={styles.showcase}>
-        <div>
-          <span className={styles.showcaseBadge}>Новый аккаунт</span>
-          <h2 className={styles.showcaseTitle}>Создайте аккаунт для заказов, адресов и входа по коду</h2>
-          <p className={styles.showcaseText}>
-            После регистрации вы сможете входить обычным паролем, кодом из письма и кодом на телефон, если номер привязан к
-            профилю.
-          </p>
-        </div>
-
-        <div className={styles.showcaseList}>
-          <div>
-            <strong>Один кабинет</strong>
-            <p>Корзина, адреса, заказы и избранное будут доступны сразу после авторизации.</p>
-          </div>
-          <div>
-            <strong>Гибкий вход</strong>
-            <p>Можно оставить классический пароль и параллельно включить быстрый вход по одноразовому коду.</p>
-          </div>
-        </div>
-      </section>
-
+    <div className={`${styles.page} ${styles.pageCompact}`}>
       <section className={styles.card}>
         <div className={styles.cardHeader}>
           <span className="badge-pill">Регистрация</span>
           <h1>Создать аккаунт</h1>
-          <p>Заполните данные, чтобы открыть доступ к личному кабинету и альтернативным сценариям входа.</p>
+          <p>Заполните данные, чтобы открыть личный кабинет, адреса, заказы и избранное.</p>
         </div>
 
         <form className={styles.form} onSubmit={handleSubmit}>
@@ -171,7 +149,7 @@ export const RegisterPage = () => {
             />
           </label>
 
-          <p className={styles.hint}>Телефон необязателен, но пригодится, если вы захотите входить по одноразовому коду.</p>
+          <p className={styles.hint}>Телефон можно не заполнять, но он пригодится для быстрого входа по коду.</p>
           <p className={styles.hint}>Используйте от 8 до 72 символов, минимум одну латинскую букву и одну цифру.</p>
 
           {shownError ? <ErrorMessage message={shownError} /> : null}
@@ -183,7 +161,7 @@ export const RegisterPage = () => {
 
         <div className={styles.links}>
           <span>
-            Уже зарегистрированы? <Link to="/login">Войти</Link>
+            Уже есть аккаунт? <Link to="/login">Войти</Link>
           </span>
         </div>
       </section>

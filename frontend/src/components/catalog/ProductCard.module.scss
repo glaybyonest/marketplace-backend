@@ -14,7 +14,7 @@
 .card:hover {
   transform: translateY(-2px);
   box-shadow: var(--shadow-hover);
-  border-color: rgb(0 91 255 / 0.18);
+  border-color: rgb(var(--color-primary-rgb) / 0.18);
 }
 
 .badges {
@@ -38,7 +38,7 @@
   min-height: 30px;
   padding: 0 12px;
   border-radius: var(--radius-full);
-  background: #ff335f;
+  background: linear-gradient(135deg, var(--color-primary), #a91018);
   color: #fff;
   font-size: 0.82rem;
   font-weight: 800;
@@ -65,7 +65,7 @@
 }
 
 .favoriteButtonActive {
-  color: #ff335f;
+  color: var(--color-primary);
 }
 
 .imageWrap {
@@ -80,7 +80,7 @@
 .skeleton {
   position: absolute;
   inset: 0;
-  background: linear-gradient(90deg, #eef3ff 0%, #fafcff 50%, #eef3ff 100%);
+  background: linear-gradient(90deg, #f7eded 0%, #fff8f8 50%, #f7eded 100%);
   background-size: 200% 100%;
   animation: shimmer 1.5s linear infinite;
 }
@@ -110,30 +110,6 @@
   transform: scale(1.03);
 }
 
-.stockBadge {
-  position: absolute;
-  left: 12px;
-  bottom: 12px;
-  display: inline-flex;
-  align-items: center;
-  min-height: 28px;
-  padding: 0 12px;
-  border-radius: var(--radius-full);
-  font-size: 0.78rem;
-  font-weight: 800;
-  backdrop-filter: blur(8px);
-}
-
-.stockBadgeActive {
-  background: rgb(232 247 237 / 0.94);
-  color: var(--color-success);
-}
-
-.stockBadgeEmpty {
-  background: rgb(255 235 237 / 0.94);
-  color: var(--color-danger);
-}
-
 .body {
   display: grid;
   gap: 10px;
@@ -159,7 +135,7 @@
 }
 
 .brand {
-  color: var(--color-text-muted);
+  color: var(--color-primary);
 }
 
 .title {
@@ -258,17 +234,32 @@
 }
 
 .deliveryTextSecondary {
-  color: var(--color-text-secondary);
+  color: var(--color-primary);
+  font-weight: 700;
 }
 
 .cartButton {
-  min-width: 112px;
+  width: 48px;
   min-height: 42px;
-  padding: 0 16px;
+  padding: 0;
   border-radius: 14px;
-  background: linear-gradient(135deg, #0f7cff, #0055e6);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(135deg, var(--color-primary), #7d0f15);
   color: #fff;
   font-weight: 800;
+  flex: 0 0 auto;
+}
+
+.cartButton svg {
+  width: 20px;
+  height: 20px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.8;
+  stroke-linecap: round;
+  stroke-linejoin: round;
 }
 
 .cartButton:disabled {

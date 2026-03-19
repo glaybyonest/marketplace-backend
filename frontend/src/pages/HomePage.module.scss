@@ -76,8 +76,8 @@
 }
 
 .categoryCardActive {
-  background: linear-gradient(180deg, #f6f9ff, #edf4ff);
-  border-color: rgb(0 91 255 / 0.14);
+  background: linear-gradient(180deg, #fff8f8, #fff0f1);
+  border-color: rgb(var(--color-primary-rgb) / 0.14);
 }
 
 .categoryIcon {
@@ -87,8 +87,8 @@
   width: 50px;
   height: 50px;
   border-radius: 16px;
-  background: color-mix(in srgb, var(--category-accent, #005bff) 12%, white);
-  color: var(--category-accent, #005bff);
+  background: color-mix(in srgb, var(--category-accent, #d81f27) 12%, white);
+  color: var(--category-accent, #d81f27);
 }
 
 .categoryIcon svg {
