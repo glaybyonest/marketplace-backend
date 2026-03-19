@@ -1,5 +1,5 @@
 import { useEffect, useMemo } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 
 import { AppLoader } from '@/components/common/AppLoader'
 import { ErrorMessage } from '@/components/common/ErrorMessage'
@@ -18,6 +18,7 @@ import styles from '@/pages/CartPage.module.scss'
 
 export const CartPage = () => {
   const dispatch = useAppDispatch()
+  const navigate = useNavigate()
   const { items, total, currency, totalItems, status, mutationStatus, error } = useAppSelector((state) => state.cart)
 
   useEffect(() => {
@@ -173,9 +174,9 @@ export const CartPage = () => {
               <strong>{formatCurrency(total, currency)}</strong>
             </div>
 
-            <Link to="/checkout" className="action-primary">
+            <button type="button" className="action-primary" onClick={() => navigate('/checkout')}>
               Перейти к оформлению
-            </Link>
+            </button>
           </aside>
         </div>
       )}

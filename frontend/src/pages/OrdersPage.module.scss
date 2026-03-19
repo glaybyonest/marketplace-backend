@@ -13,6 +13,15 @@
   color: var(--color-text-secondary);
 }
 
+.notice {
+  padding: 16px 18px;
+  border-radius: 22px;
+  border: 1px solid var(--color-border);
+  background: #fff8f8;
+  color: var(--color-primary);
+  font-weight: 700;
+}
+
 .list {
   display: grid;
   gap: 16px;
@@ -36,6 +45,16 @@
   align-items: center;
 }
 
+.orderHead h2,
+.orderHead p {
+  margin: 0;
+}
+
+.orderHead p {
+  margin-top: 8px;
+  color: var(--color-text-secondary);
+}
+
 .topRow h2,
 .topRow p {
   margin: 0;
@@ -57,6 +76,28 @@
   font-size: 0.8rem;
   font-weight: 800;
   text-transform: uppercase;
+}
+
+.topActions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.toggleButton {
+  min-height: 40px;
+  padding: 0 16px;
+  border-radius: 14px;
+  border: 1px solid var(--color-border);
+  background: #fff;
+  color: var(--color-text-primary);
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.details {
+  display: grid;
+  gap: 16px;
 }
 
 .place {
@@ -111,6 +152,11 @@
   .topRow,
   .totalRow,
   .items li {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .topActions {
     flex-direction: column;
     align-items: stretch;
   }

@@ -5,12 +5,35 @@ import { AppLoader } from '@/components/common/AppLoader'
 import { ErrorMessage } from '@/components/common/ErrorMessage'
 import { useAppDispatch, useAppSelector } from '@/store/hooks'
 import { fetchCartThunk } from '@/store/slices/cartSlice'
-import { checkoutThunk } from '@/store/slices/ordersSlice'
+import { checkoutThunk, fetchOrdersThunk } from '@/store/slices/ordersSlice'
 import { fetchPlacesThunk } from '@/store/slices/placesSlice'
 import { formatCurrency } from '@/utils/format'
 import { resolveCartItemImage } from '@/utils/media'
 
 import styles from '@/pages/CheckoutPage.module.scss'
+
+type PaymentMethod = 'bank_card' | 'sbp' | 'cash_on_delivery'
+
+const paymentOptions: Array<{ id: PaymentMethod; title: string; description: string; meta: string }> = [
+  {
+    id: 'bank_card',
+    title: 'Банковская карта',
+    description: 'Тестовая оплата без реального списания. Используется как заглушка для оформления.',
+    meta: 'Заглушка',
+  },
+  {
+    id: 'sbp',
+    title: 'СБП',
+    description: 'Имитация быстрой оплаты по СБП. Заказ создаётся сразу после подтверждения.',
+    meta: 'Тестовый режим',
+  },
+  {
+    id: 'cash_on_delivery',
+    title: 'При получении',
+    description: 'Оплата будет отмечена как отложенная. Товар оформится и попадёт в историю заказов.',
+    meta: 'Без списания',
+  },
+]
 
 export const CheckoutPage = () => {
   const dispatch = useAppDispatch()
@@ -20,6 +43,7 @@ export const CheckoutPage = () => {
   const orders = useAppSelector((state) => state.orders)
 
   const [selectedPlaceId, setSelectedPlaceId] = useState('')
+  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('bank_card')
 
   useEffect(() => {
     dispatch(fetchCartThunk())
@@ -30,6 +54,7 @@ export const CheckoutPage = () => {
     places.items.some((place) => place.id === selectedPlaceId) ? selectedPlaceId : (places.items[0]?.id ?? '')
 
   const activePlace = places.items.find((place) => place.id === activePlaceId)
+  const activePayment = paymentOptions.find((item) => item.id === paymentMethod) ?? paymentOptions[0]
 
   const handleCheckout = async () => {
     if (!activePlaceId) {
@@ -37,9 +62,16 @@ export const CheckoutPage = () => {
     }
 
     const result = await dispatch(checkoutThunk(activePlaceId))
-    if (checkoutThunk.fulfilled.match(result)) {
-      navigate('/account/orders')
+    if (!checkoutThunk.fulfilled.match(result)) {
+      return
     }
+
+    await dispatch(fetchOrdersThunk({ page: 1, limit: 20 }))
+    navigate('/account/orders', {
+      state: {
+        message: `Заказ #${result.payload.id.slice(0, 8)} оформлен.`,
+      },
+    })
   }
 
   const isLoading = cart.status === 'loading' || places.status === 'loading'
@@ -49,8 +81,7 @@ export const CheckoutPage = () => {
       <header className={styles.header}>
         <div>
           <span className="badge-pill">Оформление</span>
-          <h1>Подтвердите адрес и состав заказа</h1>
-          <p>Последний шаг перед отправкой заказа в историю покупок.</p>
+          <h1>Подтвердите адрес, состав и оплату</h1>
         </div>
       </header>
 
@@ -62,7 +93,7 @@ export const CheckoutPage = () => {
       {cart.items.length === 0 ? (
         <section className={`${styles.empty} empty-state`}>
           <h2>Нечего оформлять</h2>
-          <p>В корзине нет товаров. Сначала добавьте позиции в каталоге.</p>
+          <p>В корзине пока нет товаров. Сначала добавьте позиции в каталоге.</p>
           <Link to="/cart" className="action-primary">
             Открыть корзину
           </Link>
@@ -139,12 +170,43 @@ export const CheckoutPage = () => {
                 ))}
               </ul>
             </section>
+
+            <section className={`${styles.sectionCard} page-card`}>
+              <div className={styles.sectionHeading}>
+                <div>
+                  <span className="badge-pill">Шаг 3</span>
+                  <h2>Способ оплаты</h2>
+                </div>
+              </div>
+
+              <div className={styles.paymentList}>
+                {paymentOptions.map((option) => (
+                  <label
+                    key={option.id}
+                    className={`${styles.paymentCard} ${paymentMethod === option.id ? styles.paymentCardActive : ''}`}
+                  >
+                    <input
+                      type="radio"
+                      name="payment"
+                      value={option.id}
+                      checked={paymentMethod === option.id}
+                      onChange={() => setPaymentMethod(option.id)}
+                    />
+                    <div className={styles.paymentCopy}>
+                      <strong>{option.title}</strong>
+                      <p>{option.description}</p>
+                    </div>
+                    <span className={styles.paymentMeta}>{option.meta}</span>
+                  </label>
+                ))}
+              </div>
+            </section>
           </section>
 
           <aside className={`${styles.summary} summary-card`}>
             <div className={styles.summaryTop}>
               <span className="badge-pill">Итог</span>
-              <h2>Заказ готов к подтверждению</h2>
+              <h2>Заказ готов к оформлению</h2>
             </div>
 
             <div className={styles.deliveryInfo}>
@@ -154,12 +216,16 @@ export const CheckoutPage = () => {
 
             <dl className={styles.summaryRows}>
               <div>
-                <dt>Товары</dt>
+                <dt>Товаров</dt>
                 <dd>{cart.totalItems}</dd>
               </div>
               <div>
                 <dt>Сумма заказа</dt>
                 <dd>{formatCurrency(cart.total, cart.currency)}</dd>
+              </div>
+              <div>
+                <dt>Оплата</dt>
+                <dd>{activePayment.title}</dd>
               </div>
               <div>
                 <dt>Получение</dt>
@@ -173,10 +239,10 @@ export const CheckoutPage = () => {
               onClick={handleCheckout}
               disabled={!activePlaceId || orders.checkoutStatus === 'loading'}
             >
-              {orders.checkoutStatus === 'loading' ? 'Отправляем заказ...' : 'Подтвердить заказ'}
+              {orders.checkoutStatus === 'loading' ? 'Оформляем заказ...' : 'Оплатить и оформить'}
             </button>
 
-            <p className={styles.helper}>После подтверждения заказ появится в истории покупок и будет доступен в личном кабинете.</p>
+            <p className={styles.helper}>После оформления корзина очистится, а новый заказ появится в истории покупок.</p>
           </aside>
         </div>
       )}
