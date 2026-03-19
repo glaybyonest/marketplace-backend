@@ -23,7 +23,7 @@ import { VerifyEmailPage } from '@/pages/VerifyEmailPage'
 export const AppRouter = () => (
   <Routes>
     <Route path="/" element={<HomePage />} />
-    <Route path="/products/:id" element={<ProductPage />} />
+    <Route path="/products/:productRef" element={<ProductPage />} />
     <Route path="/login" element={<LoginPage />} />
     <Route path="/register" element={<RegisterPage />} />
     <Route path="/verify-email" element={<VerifyEmailPage />} />

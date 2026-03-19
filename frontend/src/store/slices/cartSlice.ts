@@ -1,7 +1,7 @@
 import { createAsyncThunk, createSlice } from '@reduxjs/toolkit'
 
 import { cartService } from '@/services/cartService'
-import { logoutThunk } from '@/store/slices/authSlice'
+import { forceLogout, logoutThunk } from '@/store/slices/authSlice'
 import { checkoutThunk } from '@/store/slices/ordersSlice'
 import type { Cart } from '@/types/domain'
 import { getErrorMessage } from '@/utils/error'
@@ -154,6 +154,7 @@ const cartSlice = createSlice({
         applyCart(state, emptyCart())
         state.mutationStatus = 'idle'
       })
+      .addCase(forceLogout, () => initialState)
       .addCase(logoutThunk.fulfilled, () => initialState)
       .addCase(logoutThunk.rejected, () => initialState)
   },

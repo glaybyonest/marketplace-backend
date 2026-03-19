@@ -11,6 +11,8 @@ import { formatCurrency } from '@/utils/format'
 
 import styles from '@/pages/CheckoutPage.module.scss'
 
+const FALLBACK_IMAGE = 'https://placehold.co/400x400/f3f4f6/6b7280?text=No+Image'
+
 export const CheckoutPage = () => {
   const dispatch = useAppDispatch()
   const navigate = useNavigate()
@@ -27,6 +29,8 @@ export const CheckoutPage = () => {
 
   const activePlaceId =
     places.items.some((place) => place.id === selectedPlaceId) ? selectedPlaceId : (places.items[0]?.id ?? '')
+
+  const activePlace = places.items.find((place) => place.id === activePlaceId)
 
   const handleCheckout = async () => {
     if (!activePlaceId) {
@@ -45,80 +49,134 @@ export const CheckoutPage = () => {
     <div className={styles.page}>
       <header className={styles.header}>
         <div>
-          <h1>Checkout</h1>
-          <p>Select a saved place and confirm your order.</p>
+          <span className="badge-pill">Оформление</span>
+          <h1>Подтвердите адрес и состав заказа</h1>
+          <p>Последний шаг перед отправкой заказа в ваш backend checkout.</p>
         </div>
       </header>
 
-      {isLoading ? <AppLoader label="Preparing checkout..." /> : null}
+      {isLoading ? <AppLoader label="Подготавливаем оформление..." /> : null}
       {cart.error ? <ErrorMessage message={cart.error} /> : null}
       {places.error ? <ErrorMessage message={places.error} /> : null}
       {orders.error ? <ErrorMessage message={orders.error} /> : null}
 
       {cart.items.length === 0 ? (
-        <section className={styles.empty}>
-          <h2>Cart is empty</h2>
-          <p>You need at least one item before checkout.</p>
-          <Link to="/cart" className={styles.primaryLink}>
-            Open cart
+        <section className={`${styles.empty} empty-state`}>
+          <h2>Нечего оформлять</h2>
+          <p>В корзине нет товаров. Сначала добавьте позиции в каталогe.</p>
+          <Link to="/cart" className="action-primary">
+            Открыть корзину
           </Link>
         </section>
       ) : places.items.length === 0 ? (
-        <section className={styles.empty}>
-          <h2>No saved places</h2>
-          <p>Create at least one place before placing an order.</p>
-          <Link to="/account/places" className={styles.primaryLink}>
-            Manage places
+        <section className={`${styles.empty} empty-state`}>
+          <h2>Нет сохранённых адресов</h2>
+          <p>Добавьте хотя бы одно место доставки в личном кабинете, чтобы продолжить оформление.</p>
+          <Link to="/account/places" className="action-primary">
+            Управлять адресами
           </Link>
         </section>
       ) : (
         <div className={styles.layout}>
-          <section className={styles.places}>
-            <h2>Delivery place</h2>
-            <div className={styles.placeList}>
-              {places.items.map((place) => (
-                <label key={place.id} className={`${styles.placeCard} ${activePlaceId === place.id ? styles.placeCardActive : ''}`}>
-                  <input
-                    type="radio"
-                    name="place"
-                    value={place.id}
-                    checked={activePlaceId === place.id}
-                    onChange={() => setSelectedPlaceId(place.id)}
-                  />
-                  <div>
-                    <strong>{place.title}</strong>
-                    <p>{place.addressText}</p>
-                  </div>
-                </label>
-              ))}
-            </div>
+          <section className={styles.mainColumn}>
+            <section className={`${styles.sectionCard} page-card`}>
+              <div className={styles.sectionHeading}>
+                <div>
+                  <span className="badge-pill">Шаг 1</span>
+                  <h2>Куда доставить заказ</h2>
+                </div>
+                <Link to="/account/places" className="action-ghost">
+                  Изменить адреса
+                </Link>
+              </div>
+
+              <div className={styles.placeList}>
+                {places.items.map((place) => (
+                  <label
+                    key={place.id}
+                    className={`${styles.placeCard} ${activePlaceId === place.id ? styles.placeCardActive : ''}`}
+                  >
+                    <input
+                      type="radio"
+                      name="place"
+                      value={place.id}
+                      checked={activePlaceId === place.id}
+                      onChange={() => setSelectedPlaceId(place.id)}
+                    />
+                    <div>
+                      <strong>{place.title}</strong>
+                      <p>{place.addressText}</p>
+                    </div>
+                  </label>
+                ))}
+              </div>
+            </section>
+
+            <section className={`${styles.sectionCard} page-card`}>
+              <div className={styles.sectionHeading}>
+                <div>
+                  <span className="badge-pill">Шаг 2</span>
+                  <h2>Состав заказа</h2>
+                </div>
+                <Link to="/cart" className="action-ghost">
+                  Вернуться в корзину
+                </Link>
+              </div>
+
+              <ul className={styles.orderList}>
+                {cart.items.map((item) => (
+                  <li key={item.id} className={styles.orderItem}>
+                    <img src={item.imageUrl ?? FALLBACK_IMAGE} alt={item.title} />
+                    <div className={styles.orderCopy}>
+                      <strong>{item.title}</strong>
+                      <span>{item.sku ? `Артикул ${item.sku}` : 'Товар из каталога'}</span>
+                    </div>
+                    <span className={styles.orderQty}>x{item.quantity}</span>
+                    <strong>{formatCurrency(item.lineTotal, item.currency ?? cart.currency)}</strong>
+                  </li>
+                ))}
+              </ul>
+            </section>
           </section>
 
-          <aside className={styles.summary}>
-            <h2>Order summary</h2>
-            <ul className={styles.summaryList}>
-              {cart.items.map((item) => (
-                <li key={item.id}>
-                  <span>{item.title} x {item.quantity}</span>
-                  <strong>{formatCurrency(item.lineTotal, item.currency ?? cart.currency)}</strong>
-                </li>
-              ))}
-            </ul>
+          <aside className={`${styles.summary} summary-card`}>
+            <div className={styles.summaryTop}>
+              <span className="badge-pill">Итог</span>
+              <h2>Заказ готов к отправке</h2>
+            </div>
 
-            <dl>
+            <div className={styles.deliveryInfo}>
+              <strong>{activePlace?.title || 'Адрес не выбран'}</strong>
+              <p>{activePlace?.addressText || 'Выберите место доставки слева.'}</p>
+            </div>
+
+            <dl className={styles.summaryRows}>
               <div>
-                <dt>Items</dt>
+                <dt>Товары</dt>
                 <dd>{cart.totalItems}</dd>
               </div>
               <div>
-                <dt>Total</dt>
+                <dt>Сумма заказа</dt>
                 <dd>{formatCurrency(cart.total, cart.currency)}</dd>
+              </div>
+              <div>
+                <dt>Оплата</dt>
+                <dd>Через текущий backend flow</dd>
               </div>
             </dl>
 
-            <button type="button" className={styles.primaryButton} onClick={handleCheckout} disabled={!activePlaceId || orders.checkoutStatus === 'loading'}>
-              {orders.checkoutStatus === 'loading' ? 'Placing order...' : 'Place order'}
+            <button
+              type="button"
+              className="action-primary"
+              onClick={handleCheckout}
+              disabled={!activePlaceId || orders.checkoutStatus === 'loading'}
+            >
+              {orders.checkoutStatus === 'loading' ? 'Отправляем заказ...' : 'Подтвердить заказ'}
             </button>
+
+            <p className={styles.helper}>
+              После подтверждения заказ появится в истории заказов без изменения существующих API.
+            </p>
           </aside>
         </div>
       )}

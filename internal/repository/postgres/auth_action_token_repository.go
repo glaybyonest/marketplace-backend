@@ -54,6 +54,28 @@ func (r *AuthActionTokenRepository) GetActiveByHash(
 	return item, nil
 }
 
+func (r *AuthActionTokenRepository) GetLatestActiveByUserAndPurpose(
+	ctx context.Context,
+	userID uuid.UUID,
+	purpose domain.AuthActionPurpose,
+	now time.Time,
+) (domain.AuthActionToken, error) {
+	const q = `
+		SELECT id, user_id, purpose, token_hash, expires_at, created_at, consumed_at
+		FROM user_action_tokens
+		WHERE user_id = $1 AND purpose = $2 AND consumed_at IS NULL AND expires_at > $3
+		ORDER BY created_at DESC
+		LIMIT 1
+	`
+
+	var item domain.AuthActionToken
+	err := scanAuthActionToken(r.db.QueryRow(ctx, q, userID, purpose, now), &item)
+	if err != nil {
+		return domain.AuthActionToken{}, mapError(err)
+	}
+	return item, nil
+}
+
 func (r *AuthActionTokenRepository) Consume(ctx context.Context, id uuid.UUID, consumedAt time.Time) (bool, error) {
 	cmd, err := r.db.Exec(ctx, `
 		UPDATE user_action_tokens

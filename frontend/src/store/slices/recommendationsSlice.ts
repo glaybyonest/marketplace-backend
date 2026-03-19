@@ -1,6 +1,7 @@
 import { createAsyncThunk, createSlice } from '@reduxjs/toolkit'
 
 import { recommendationsService } from '@/services/recommendationsService'
+import { forceLogout, logoutThunk } from '@/store/slices/authSlice'
 import type { Product } from '@/types/domain'
 import { getErrorMessage } from '@/utils/error'
 
@@ -51,6 +52,9 @@ const recommendationsSlice = createSlice({
         state.status = 'failed'
         state.error = action.payload as string
       })
+      .addCase(forceLogout, () => initialState)
+      .addCase(logoutThunk.fulfilled, () => initialState)
+      .addCase(logoutThunk.rejected, () => initialState)
   },
 })
 

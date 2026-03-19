@@ -15,59 +15,117 @@ export const AccountPage = () => {
   const { profile, status, updateStatus, error } = useAppSelector((state) => state.user)
 
   const [fullNameDraft, setFullNameDraft] = useState<string | undefined>(undefined)
+  const [phoneDraft, setPhoneDraft] = useState<string | undefined>(undefined)
 
   useEffect(() => {
     dispatch(fetchProfileThunk())
   }, [dispatch])
 
   const fullName = fullNameDraft ?? profile?.fullName ?? authUser?.fullName ?? authUser?.name ?? ''
+  const email = profile?.email ?? authUser?.email ?? '-'
+  const phone = phoneDraft ?? profile?.phone ?? authUser?.phone ?? ''
+  const isVerified = Boolean(profile?.isEmailVerified ?? authUser?.isEmailVerified ?? authUser?.emailVerifiedAt)
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault()
-    await dispatch(updateProfileThunk({ fullName }))
+    await dispatch(updateProfileThunk({ fullName, phone }))
   }
-
-  const email = profile?.email ?? authUser?.email ?? '-'
 
   return (
     <div className={styles.page}>
-      <header className={styles.header}>
+      <section className={styles.hero}>
         <div>
-          <h1>Account</h1>
-          <p>Manage your profile and quick links.</p>
+          <span className="badge-pill">Личный кабинет</span>
+          <h1>{fullName || 'Ваш аккаунт'}</h1>
+          <p>Управляйте профилем, адресами доставки, избранным, заказами и способами входа из одного места.</p>
         </div>
-      </header>
+        <div className={styles.heroMeta}>
+          <div>
+            <span>Email</span>
+            <strong>{email}</strong>
+          </div>
+          <div>
+            <span>Телефон</span>
+            <strong>{phone || 'Не указан'}</strong>
+          </div>
+          <div>
+            <span>Статус</span>
+            <strong>{isVerified ? 'Почта подтверждена' : 'Нужно подтвердить почту'}</strong>
+          </div>
+          <div>
+            <span>Роль</span>
+            <strong>{authUser?.role === 'admin' ? 'Администратор' : 'Покупатель'}</strong>
+          </div>
+        </div>
+      </section>
 
-      {status === 'loading' ? <AppLoader label="Loading profile..." /> : null}
+      {status === 'loading' ? <AppLoader label="Загружаем профиль..." /> : null}
       {error ? <ErrorMessage message={error} /> : null}
 
-      <section className={styles.card}>
-        <form className={styles.form} onSubmit={handleSubmit}>
-          <label>
-            Full name
-            <input
-              value={fullName}
-              onChange={(event) => setFullNameDraft(event.target.value)}
-            />
-          </label>
-          <label>
-            Email
-            <input value={email} disabled />
-          </label>
-          <button type="submit" disabled={updateStatus === 'loading'}>
-            {updateStatus === 'loading' ? 'Saving...' : 'Save'}
-          </button>
-        </form>
+      <div className={styles.content}>
+        <section className={`${styles.formCard} page-card`}>
+          <div className={styles.sectionHeader}>
+            <div>
+              <span className="badge-pill">Профиль</span>
+              <h2>Основные данные</h2>
+            </div>
+          </div>
 
-        <nav className={styles.quickLinks}>
-          <Link to="/cart">Cart</Link>
-          <Link to="/account/orders">Orders</Link>
-          <Link to="/favorites">Favorites</Link>
-          <Link to="/account/places">My places</Link>
-          <Link to="/account/sessions">Sessions</Link>
-          {authUser?.role === 'admin' ? <Link to="/admin">Admin</Link> : null}
-        </nav>
-      </section>
+          <form className={styles.form} onSubmit={handleSubmit}>
+            <label>
+              Имя
+              <input value={fullName} onChange={(event) => setFullNameDraft(event.target.value)} />
+            </label>
+            <label>
+              Email
+              <input value={email} disabled />
+            </label>
+            <label>
+              Телефон
+              <input
+                type="tel"
+                value={phone}
+                onChange={(event) => setPhoneDraft(event.target.value)}
+                placeholder="+7 999 123-45-67"
+                autoComplete="tel"
+              />
+            </label>
+            <p className={styles.inlineInfo}>Этот номер используется для входа по одноразовому коду, если вы включите такой сценарий.</p>
+            <button type="submit" className="action-primary" disabled={updateStatus === 'loading'}>
+              {updateStatus === 'loading' ? 'Сохраняем...' : 'Сохранить изменения'}
+            </button>
+          </form>
+        </section>
+
+        <section className={styles.linksGrid}>
+          <Link to="/cart" className={styles.linkCard}>
+            <strong>Корзина</strong>
+            <p>Проверьте текущий состав заказа и перейдите к оформлению.</p>
+          </Link>
+          <Link to="/account/orders" className={styles.linkCard}>
+            <strong>Заказы</strong>
+            <p>История оформленных заказов и адресов доставки.</p>
+          </Link>
+          <Link to="/favorites" className={styles.linkCard}>
+            <strong>Избранное</strong>
+            <p>Подборка товаров, которые вы сохранили на потом.</p>
+          </Link>
+          <Link to="/account/places" className={styles.linkCard}>
+            <strong>Адреса</strong>
+            <p>Места доставки для checkout и персонального сценария получения.</p>
+          </Link>
+          <Link to="/account/sessions" className={styles.linkCard}>
+            <strong>Сессии</strong>
+            <p>Активные устройства и быстрый отзыв доступа.</p>
+          </Link>
+          {authUser?.role === 'admin' ? (
+            <Link to="/admin" className={styles.linkCard}>
+              <strong>Админка</strong>
+              <p>Управление каталогом, категориями и карточками товаров.</p>
+            </Link>
+          ) : null}
+        </section>
+      </div>
     </div>
   )
 }

@@ -15,7 +15,7 @@ import (
 
 type ProfileService interface {
 	Get(ctx context.Context, userID uuid.UUID) (domain.User, error)
-	Update(ctx context.Context, userID uuid.UUID, fullName *string) (domain.User, error)
+	Update(ctx context.Context, userID uuid.UUID, fullName *string, phone *string) (domain.User, error)
 }
 
 type ProfileHandler struct {
@@ -58,7 +58,7 @@ func (h *ProfileHandler) Update(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	user, err := h.service.Update(r.Context(), userID, req.FullName)
+	user, err := h.service.Update(r.Context(), userID, req.FullName, req.Phone)
 	if err != nil {
 		writeDomainError(w, r, err)
 		return

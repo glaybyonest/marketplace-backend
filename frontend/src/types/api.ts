@@ -23,6 +23,15 @@ export interface AuthResponse<TUser> {
   message?: string
 }
 
+export interface AuthCodeDispatch {
+  accepted: boolean
+  channel: 'email' | 'phone'
+  maskedDestination?: string
+  expiresIn?: number
+  devCode?: string
+  message?: string
+}
+
 export type ProductSort = 'new' | 'price_asc' | 'price_desc'
 
 export interface ProductFilters {

@@ -21,9 +21,11 @@ type authState struct {
 	now          func() time.Time
 	users        map[uuid.UUID]domain.User
 	byEmail      map[string]uuid.UUID
+	byPhone      map[string]uuid.UUID
 	sessions     map[string]domain.UserSession
 	actionTokens map[string]domain.AuthActionToken
 	sentMessages []mailer.Message
+	sentSMS      []mailer.SMSMessage
 	auditEntries []observability.AuditEntry
 }
 
@@ -39,10 +41,16 @@ func (m *authUserRepoMock) Create(ctx context.Context, input CreateUserInput) (d
 	if _, exists := m.state.byEmail[input.Email]; exists {
 		return domain.User{}, domain.ErrConflict
 	}
+	if input.Phone != nil {
+		if _, exists := m.state.byPhone[*input.Phone]; exists {
+			return domain.User{}, domain.ErrConflict
+		}
+	}
 
 	user := domain.User{
 		ID:              uuid.New(),
 		Email:           input.Email,
+		Phone:           "",
 		PasswordHash:    input.PasswordHash,
 		Role:            input.Role,
 		CreatedAt:       m.state.now(),
@@ -54,9 +62,15 @@ func (m *authUserRepoMock) Create(ctx context.Context, input CreateUserInput) (d
 	if input.FullName != nil {
 		user.FullName = *input.FullName
 	}
+	if input.Phone != nil {
+		user.Phone = *input.Phone
+	}
 
 	m.state.users[user.ID] = user
 	m.state.byEmail[user.Email] = user.ID
+	if user.Phone != "" {
+		m.state.byPhone[user.Phone] = user.ID
+	}
 	return user, nil
 }
 
@@ -65,6 +79,17 @@ func (m *authUserRepoMock) GetByEmail(ctx context.Context, email string) (domain
 		return domain.User{}, m.force
 	}
 	id, ok := m.state.byEmail[email]
+	if !ok {
+		return domain.User{}, domain.ErrNotFound
+	}
+	return m.state.users[id], nil
+}
+
+func (m *authUserRepoMock) GetByPhone(ctx context.Context, phone string) (domain.User, error) {
+	if m.force != nil {
+		return domain.User{}, m.force
+	}
+	id, ok := m.state.byPhone[phone]
 	if !ok {
 		return domain.User{}, domain.ErrNotFound
 	}
@@ -106,6 +131,28 @@ func (m *authUserRepoMock) MarkEmailVerified(ctx context.Context, id uuid.UUID, 
 	}
 	user.EmailVerifiedAt = &verifiedAt
 	user.IsEmailVerified = true
+	user.UpdatedAt = m.state.now()
+	m.state.users[id] = user
+	return user, nil
+}
+
+func (m *authUserRepoMock) UpdatePhone(ctx context.Context, id uuid.UUID, phone *string) (domain.User, error) {
+	if m.force != nil {
+		return domain.User{}, m.force
+	}
+	user, ok := m.state.users[id]
+	if !ok {
+		return domain.User{}, domain.ErrNotFound
+	}
+	if user.Phone != "" {
+		delete(m.state.byPhone, user.Phone)
+	}
+	if phone == nil {
+		user.Phone = ""
+	} else {
+		user.Phone = *phone
+		m.state.byPhone[*phone] = id
+	}
 	user.UpdatedAt = m.state.now()
 	m.state.users[id] = user
 	return user, nil
@@ -296,6 +343,33 @@ func (m *authActionTokenRepoMock) GetActiveByHash(
 	return token, nil
 }
 
+func (m *authActionTokenRepoMock) GetLatestActiveByUserAndPurpose(
+	ctx context.Context,
+	userID uuid.UUID,
+	purpose domain.AuthActionPurpose,
+	now time.Time,
+) (domain.AuthActionToken, error) {
+	if m.force != nil {
+		return domain.AuthActionToken{}, m.force
+	}
+
+	var latest domain.AuthActionToken
+	found := false
+	for _, token := range m.state.actionTokens {
+		if token.UserID != userID || token.Purpose != purpose || token.ConsumedAt != nil || !token.ExpiresAt.After(now) {
+			continue
+		}
+		if !found || token.CreatedAt.After(latest.CreatedAt) {
+			latest = token
+			found = true
+		}
+	}
+	if !found {
+		return domain.AuthActionToken{}, domain.ErrNotFound
+	}
+	return latest, nil
+}
+
 func (m *authActionTokenRepoMock) Consume(ctx context.Context, id uuid.UUID, consumedAt time.Time) (bool, error) {
 	if m.force != nil {
 		return false, m.force
@@ -332,6 +406,19 @@ func (m *authMailerMock) Send(ctx context.Context, message mailer.Message) error
 		return m.force
 	}
 	m.state.sentMessages = append(m.state.sentMessages, message)
+	return nil
+}
+
+type authSMSMock struct {
+	state *authState
+	force error
+}
+
+func (m *authSMSMock) Send(ctx context.Context, message mailer.SMSMessage) error {
+	if m.force != nil {
+		return m.force
+	}
+	m.state.sentSMS = append(m.state.sentSMS, message)
 	return nil
 }
 
@@ -390,15 +477,18 @@ func TestAuthService(t *testing.T) {
 		now:          func() time.Time { return now },
 		users:        map[uuid.UUID]domain.User{},
 		byEmail:      map[string]uuid.UUID{},
+		byPhone:      map[string]uuid.UUID{},
 		sessions:     map[string]domain.UserSession{},
 		actionTokens: map[string]domain.AuthActionToken{},
 		sentMessages: make([]mailer.Message, 0),
+		sentSMS:      make([]mailer.SMSMessage, 0),
 		auditEntries: make([]observability.AuditEntry, 0),
 	}
 	users := &authUserRepoMock{state: state}
 	sessions := &authSessionRepoMock{state: state}
 	actionTokens := &authActionTokenRepoMock{state: state}
 	messageSender := &authMailerMock{state: state}
+	smsSender := &authSMSMock{state: state}
 	auditLogger := &authAuditMock{state: state}
 	jwt := &jwtMock{}
 	service := NewAuthService(
@@ -408,6 +498,7 @@ func TestAuthService(t *testing.T) {
 		jwt,
 		security.NewPasswordManager(),
 		messageSender,
+		smsSender,
 		auditLogger,
 		"http://localhost:5173",
 		"no-reply@marketplace.local",
@@ -415,15 +506,18 @@ func TestAuthService(t *testing.T) {
 		30*24*time.Hour,
 		24*time.Hour,
 		time.Hour,
+		10*time.Minute,
 		15*time.Minute,
 		5,
 		15*time.Minute,
+		true,
 	)
 	service.now = state.now
 
 	t.Run("register requires verification", func(t *testing.T) {
 		result, err := service.Register(context.Background(), RegisterInput{
 			Email:    "User@Example.com",
+			Phone:    "+79991234567",
 			Password: "StrongPass1",
 			FullName: "User Name",
 		})
@@ -443,6 +537,30 @@ func TestAuthService(t *testing.T) {
 		})
 		require.Error(t, err)
 		assert.ErrorIs(t, err, domain.ErrEmailNotVerified)
+	})
+
+	t.Run("email code login verifies account", func(t *testing.T) {
+		_, err := service.Register(context.Background(), RegisterInput{
+			Email:    "code@example.com",
+			Password: "StrongPass1",
+			FullName: "Code User",
+		})
+		require.NoError(t, err)
+
+		dispatch, err := service.RequestEmailLoginCode(context.Background(), EmailCodeRequestInput{
+			Email: "code@example.com",
+		})
+		require.NoError(t, err)
+		assert.True(t, dispatch.Accepted)
+		require.NotEmpty(t, dispatch.DevCode)
+
+		result, err := service.LoginWithEmailCode(context.Background(), EmailCodeLoginInput{
+			Email: "code@example.com",
+			Code:  dispatch.DevCode,
+		})
+		require.NoError(t, err)
+		assert.True(t, result.User.IsEmailVerified)
+		require.NotNil(t, result.Tokens)
 	})
 
 	t.Run("register allowlisted admin", func(t *testing.T) {
@@ -474,6 +592,24 @@ func TestAuthService(t *testing.T) {
 		_, err = service.ConfirmEmailVerification(context.Background(), VerifyEmailConfirmInput{Token: verifyToken})
 		require.Error(t, err)
 		assert.ErrorIs(t, err, domain.ErrInvalidToken)
+	})
+
+	t.Run("phone code login", func(t *testing.T) {
+		dispatch, err := service.RequestPhoneLoginCode(context.Background(), PhoneCodeRequestInput{
+			Phone: "+79991234567",
+		})
+		require.NoError(t, err)
+		assert.True(t, dispatch.Accepted)
+		require.NotEmpty(t, dispatch.DevCode)
+		require.NotEmpty(t, state.sentSMS)
+
+		result, err := service.LoginWithPhoneCode(context.Background(), PhoneCodeLoginInput{
+			Phone: "+79991234567",
+			Code:  dispatch.DevCode,
+		})
+		require.NoError(t, err)
+		require.NotNil(t, result.Tokens)
+		assert.Equal(t, "+79991234567", result.User.Phone)
 	})
 
 	t.Run("login failure is audited", func(t *testing.T) {

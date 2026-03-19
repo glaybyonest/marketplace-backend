@@ -1,8 +1,12 @@
 import { useMemo, useState } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 
+import { useAppDispatch, useAppSelector } from '@/store/hooks'
+import { addCartItemThunk } from '@/store/slices/cartSlice'
+import { addFavoriteThunk, removeFavoriteThunk } from '@/store/slices/favoritesSlice'
 import type { Product } from '@/types/domain'
 import { formatCurrency } from '@/utils/format'
+import { getProductPath } from '@/utils/productRef'
 
 import styles from '@/components/catalog/ProductCard.module.scss'
 
@@ -17,22 +21,67 @@ const formatSpecValue = (value: string | number | boolean | null) => {
     return '-'
   }
   if (typeof value === 'boolean') {
-    return value ? 'Yes' : 'No'
+    return value ? 'Да' : 'Нет'
   }
   return String(value)
 }
 
 export const ProductCard = ({ product }: ProductCardProps) => {
+  const dispatch = useAppDispatch()
+  const navigate = useNavigate()
   const [imageLoaded, setImageLoaded] = useState(false)
+  const auth = useAppSelector((state) => state.auth)
+  const favoriteItems = useAppSelector((state) => state.favorites.items)
+  const cartStatus = useAppSelector((state) => state.cart.mutationStatus)
   const image = product.imageUrl ?? product.images[0] ?? FALLBACK_IMAGE
 
-  const specPreview = useMemo(() => {
-    return Object.entries(product.specs ?? {}).slice(0, 2)
-  }, [product.specs])
+  const specPreview = useMemo(() => Object.entries(product.specs ?? {}).slice(0, 2), [product.specs])
+
+  const discount = Math.min(32, Math.max(7, Math.round((product.stock ?? 0) / 10)))
+  const oldPrice = Math.round(product.price * (1 + discount / 100))
+  const isFavorite = favoriteItems.some((item) => item.id === product.id)
+  const productPath = getProductPath(product)
+
+  const handleFavorite = async () => {
+    if (!auth.isAuthenticated) {
+      navigate('/login')
+      return
+    }
+
+    if (isFavorite) {
+      await dispatch(removeFavoriteThunk(product.id))
+      return
+    }
+
+    await dispatch(addFavoriteThunk(product.id))
+  }
+
+  const handleAddToCart = async () => {
+    if (!auth.isAuthenticated) {
+      navigate('/login')
+      return
+    }
+
+    await dispatch(addCartItemThunk({ productId: product.id, quantity: 1 }))
+  }
 
   return (
     <article className={styles.card}>
-      <Link to={`/products/${product.id}`} className={styles.imageWrap}>
+      <div className={styles.badges}>
+        <span className={styles.discountBadge}>-{discount}%</span>
+        <button
+          type="button"
+          className={`${styles.favoriteButton} ${isFavorite ? styles.favoriteButtonActive : ''}`}
+          onClick={handleFavorite}
+          aria-label={isFavorite ? 'Убрать из избранного' : 'Добавить в избранное'}
+        >
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M12 20.4 4.9 13.7A4.6 4.6 0 0 1 11.6 7l.4.5.4-.5a4.6 4.6 0 0 1 6.7 6.3L12 20.4Z" />
+          </svg>
+        </button>
+      </div>
+
+      <Link to={productPath} className={styles.imageWrap}>
         {!imageLoaded ? <div className={styles.skeleton} /> : null}
         <img
           src={image}
@@ -41,23 +90,19 @@ export const ProductCard = ({ product }: ProductCardProps) => {
           className={imageLoaded ? styles.imageLoaded : styles.image}
           onLoad={() => setImageLoaded(true)}
         />
-        <span
-          className={`${styles.stockBadge} ${
-            product.stock && product.stock > 0 ? styles.stockBadgeActive : styles.stockBadgeEmpty
-          }`}
-        >
-          {product.stock && product.stock > 0 ? `${product.stock} in stock` : 'Out of stock'}
+        <span className={`${styles.stockBadge} ${product.stock && product.stock > 0 ? styles.stockBadgeActive : styles.stockBadgeEmpty}`}>
+          {product.stock && product.stock > 0 ? `В наличии: ${product.stock}` : 'Под заказ'}
         </span>
       </Link>
 
       <div className={styles.body}>
         <div className={styles.metaRow}>
-          <span className={styles.category}>{product.categoryName || 'Catalog'}</span>
+          <span className={styles.category}>{product.categoryName || 'Каталог'}</span>
           {product.brand ? <span className={styles.brand}>{product.brand}</span> : null}
         </div>
 
         <h3 className={styles.title}>
-          <Link to={`/products/${product.id}`}>{product.title}</Link>
+          <Link to={productPath}>{product.title}</Link>
         </h3>
 
         {specPreview.length > 0 ? (
@@ -70,15 +115,28 @@ export const ProductCard = ({ product }: ProductCardProps) => {
             ))}
           </ul>
         ) : (
-          <p className={styles.description}>{product.description || 'Open the product to see details.'}</p>
+          <p className={styles.description}>{product.description || 'Откройте карточку товара, чтобы посмотреть детали и характеристики.'}</p>
         )}
 
+        <div className={styles.priceBlock}>
+          <span className={styles.oldPrice}>{formatCurrency(oldPrice, product.currency)}</span>
+          <strong className={styles.price}>{formatCurrency(product.price, product.currency)}</strong>
+          {product.unit ? <span className={styles.unit}>за {product.unit}</span> : null}
+        </div>
+
         <div className={styles.footerRow}>
-          <div className={styles.priceBlock}>
-            <strong className={styles.price}>{formatCurrency(product.price, product.currency)}</strong>
-            {product.unit ? <span className={styles.unit}>per {product.unit}</span> : null}
+          <div>
+            <span className={styles.deliveryText}>Доставка и самовывоз</span>
+            <span className={styles.deliveryTextSecondary}>Через ваш backend checkout</span>
           </div>
-          <span className={styles.cta}>Open</span>
+          <button
+            type="button"
+            className={styles.cartButton}
+            onClick={handleAddToCart}
+            disabled={!product.stock || cartStatus === 'loading'}
+          >
+            В корзину
+          </button>
         </div>
       </div>
     </article>

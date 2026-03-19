@@ -1,10 +1,15 @@
 .layout {
   min-height: 100vh;
-  background: linear-gradient(180deg, #f3f8ff 0%, #f7f9fc 45%, #fbfcfe 100%);
 }
 
 .content {
-  max-width: var(--content-width);
+  width: min(100%, var(--content-width));
   margin: 0 auto;
-  padding: 1.25rem 1rem 2.5rem;
+  padding: 20px 24px 40px;
+}
+
+@media (max-width: 768px) {
+  .content {
+    padding: 16px 16px 32px;
+  }
 }

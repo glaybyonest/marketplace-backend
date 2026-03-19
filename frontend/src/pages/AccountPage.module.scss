@@ -1,78 +1,120 @@
 .page {
   display: grid;
-  gap: 1rem;
+  gap: 20px;
 }
 
-.header {
+.hero {
   display: flex;
   justify-content: space-between;
-  gap: 1rem;
-  align-items: center;
+  gap: 20px;
+  padding: 28px 30px;
+  border-radius: 34px;
+  background: linear-gradient(135deg, #005bff, #0046cc 58%, #1b7cff);
+  color: #fff;
+  box-shadow: 0 28px 72px rgb(0 91 255 / 0.2);
 }
 
-.header h1 {
-  margin: 0;
+.hero h1 {
+  margin: 10px 0 0;
+  color: #fff;
 }
 
-.header p {
-  margin: 0.25rem 0 0;
-  color: var(--color-text-secondary);
+.hero p {
+  margin: 10px 0 0;
+  max-width: 760px;
+  color: rgb(255 255 255 / 0.84);
 }
 
-.card {
-  background: #fff;
-  border: 1px solid var(--color-border);
-  border-radius: 1rem;
-  padding: 1rem;
+.heroMeta {
   display: grid;
-  grid-template-columns: minmax(280px, 420px) 1fr;
-  gap: 1rem;
+  gap: 12px;
+  min-width: 280px;
+}
+
+.heroMeta div {
+  display: grid;
+  gap: 4px;
+  padding: 16px 18px;
+  border-radius: 22px;
+  background: rgb(255 255 255 / 0.14);
+  backdrop-filter: blur(14px);
+}
+
+.heroMeta span {
+  color: rgb(255 255 255 / 0.72);
+  font-size: var(--font-size-sm);
+}
+
+.content {
+  display: grid;
+  grid-template-columns: minmax(320px, 420px) minmax(0, 1fr);
+  gap: 18px;
+  align-items: start;
+}
+
+.formCard {
+  display: grid;
+  gap: 18px;
+}
+
+.sectionHeader h2 {
+  margin: 10px 0 0;
 }
 
 .form {
   display: grid;
-  gap: 0.65rem;
+  gap: 14px;
 }
 
 .form label {
   display: grid;
-  gap: 0.3rem;
+  gap: 8px;
   color: var(--color-text-secondary);
 }
 
 .form input {
+  width: 100%;
+  min-height: 52px;
   border: 1px solid var(--color-border);
-  border-radius: 0.7rem;
-  padding: 0.62rem 0.75rem;
+  border-radius: 18px;
+  padding: 0 16px;
+  font: inherit;
 }
 
-.form button {
-  border: none;
-  border-radius: 0.75rem;
-  background: var(--color-primary);
-  color: #fff;
-  padding: 0.67rem 0.9rem;
-  width: fit-content;
-  cursor: pointer;
+.inlineInfo {
+  margin: -2px 0 0;
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-sm);
 }
 
-.quickLinks {
+.linksGrid {
   display: grid;
-  align-content: start;
-  gap: 0.5rem;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
 }
 
-.quickLinks a {
-  text-decoration: none;
-  color: var(--color-text-primary);
+.linkCard {
+  display: grid;
+  gap: 8px;
+  padding: 22px;
+  border-radius: 26px;
+  background: #fff;
   border: 1px solid var(--color-border);
-  border-radius: 0.75rem;
-  padding: 0.72rem 0.85rem;
-  background: var(--color-soft);
+  box-shadow: var(--shadow-card);
+  color: var(--color-text-primary);
+  text-decoration: none;
 }
 
-@media (max-width: 850px) {
-  .card {
+.linkCard p {
+  margin: 0;
+  color: var(--color-text-secondary);
+}
+
+@media (max-width: 1080px) {
+  .hero,
+  .content,
+  .linksGrid {
     grid-template-columns: 1fr;
+    flex-direction: column;
   }
 }

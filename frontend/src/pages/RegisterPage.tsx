@@ -13,28 +13,33 @@ const PASSWORD_MAX_LEN = 72
 
 const hasLatinLetterAndDigit = (value: string) => /[A-Za-z]/.test(value) && /\d/.test(value)
 
-const validateForm = (name: string, email: string, password: string): string | null => {
+const validateForm = (name: string, email: string, password: string, phone: string): string | null => {
   const trimmedName = name.trim()
   const trimmedEmail = email.trim()
+  const trimmedPhone = phone.trim()
 
   if (!trimmedName) {
-    return 'Enter your full name'
+    return 'Укажите имя'
   }
 
   if (trimmedName.length > 120) {
-    return 'Full name must be 120 characters or fewer'
+    return 'Имя должно быть короче 120 символов'
   }
 
   if (!trimmedEmail) {
-    return 'Enter your email'
+    return 'Укажите email'
+  }
+
+  if (trimmedPhone.length > 0 && trimmedPhone.length < 10) {
+    return 'Проверьте номер телефона'
   }
 
   if (password.length < PASSWORD_MIN_LEN || password.length > PASSWORD_MAX_LEN) {
-    return 'Password must be between 8 and 72 characters'
+    return 'Пароль должен содержать от 8 до 72 символов'
   }
 
   if (!hasLatinLetterAndDigit(password)) {
-    return 'Password must include at least one letter and one digit'
+    return 'Пароль должен содержать хотя бы одну латинскую букву и одну цифру'
   }
 
   return null
@@ -47,13 +52,14 @@ export const RegisterPage = () => {
 
   const [name, setName] = useState('')
   const [email, setEmail] = useState('')
+  const [phone, setPhone] = useState('')
   const [password, setPassword] = useState('')
   const [localError, setLocalError] = useState<string | null>(null)
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault()
 
-    const validationError = validateForm(name, email, password)
+    const validationError = validateForm(name, email, password, phone)
     if (validationError) {
       setLocalError(validationError)
       return
@@ -66,6 +72,7 @@ export const RegisterPage = () => {
       registerThunk({
         name: name.trim(),
         email: normalizedEmail,
+        phone: phone.trim() || undefined,
         password,
       }),
     )
@@ -78,7 +85,7 @@ export const RegisterPage = () => {
       navigate(`/verify-email?email=${encodeURIComponent(normalizedEmail)}`, {
         replace: true,
         state: {
-          message: result.payload.message ?? 'We sent a verification link to your email',
+          message: result.payload.message ?? 'Мы отправили письмо с подтверждением на ваш email',
         },
       })
       return
@@ -91,21 +98,41 @@ export const RegisterPage = () => {
 
   return (
     <div className={styles.page}>
+      <section className={styles.showcase}>
+        <div>
+          <span className={styles.showcaseBadge}>Новый аккаунт</span>
+          <h2 className={styles.showcaseTitle}>Создайте аккаунт для заказов, адресов и входа по коду</h2>
+          <p className={styles.showcaseText}>
+            После регистрации вы сможете входить обычным паролем, кодом из письма и кодом на телефон, если номер привязан к
+            профилю.
+          </p>
+        </div>
+
+        <div className={styles.showcaseList}>
+          <div>
+            <strong>Один кабинет</strong>
+            <p>Корзина, адреса, заказы и избранное будут доступны сразу после авторизации.</p>
+          </div>
+          <div>
+            <strong>Гибкий вход</strong>
+            <p>Можно оставить классический пароль и параллельно включить быстрый вход по одноразовому коду.</p>
+          </div>
+        </div>
+      </section>
+
       <section className={styles.card}>
-        <h1>Create account</h1>
-        <p>Create an account to save favorites, manage places, and place orders.</p>
+        <div className={styles.cardHeader}>
+          <span className="badge-pill">Регистрация</span>
+          <h1>Создать аккаунт</h1>
+          <p>Заполните данные, чтобы открыть доступ к личному кабинету и альтернативным сценариям входа.</p>
+        </div>
 
         <form className={styles.form} onSubmit={handleSubmit}>
           <label>
-            Full name
-            <input
-              value={name}
-              onChange={(event) => setName(event.target.value)}
-              autoComplete="name"
-              maxLength={120}
-              required
-            />
+            Имя
+            <input value={name} onChange={(event) => setName(event.target.value)} autoComplete="name" maxLength={120} required />
           </label>
+
           <label>
             Email
             <input
@@ -118,8 +145,21 @@ export const RegisterPage = () => {
               required
             />
           </label>
+
           <label>
-            Password
+            Телефон
+            <input
+              type="tel"
+              value={phone}
+              onChange={(event) => setPhone(event.target.value)}
+              placeholder="+7 999 123-45-67"
+              autoComplete="tel"
+              maxLength={32}
+            />
+          </label>
+
+          <label>
+            Пароль
             <input
               type="password"
               value={password}
@@ -130,16 +170,22 @@ export const RegisterPage = () => {
               required
             />
           </label>
-          <p className={styles.hint}>Use 8 to 72 characters with at least one letter and one digit.</p>
+
+          <p className={styles.hint}>Телефон необязателен, но он понадобится, если вы захотите входить по коду из SMS.</p>
+          <p className={styles.hint}>Используйте от 8 до 72 символов, минимум одну латинскую букву и одну цифру.</p>
+
           {shownError ? <ErrorMessage message={shownError} /> : null}
+
           <button type="submit" disabled={authState.status === 'loading'}>
-            {authState.status === 'loading' ? 'Creating account...' : 'Create account'}
+            {authState.status === 'loading' ? 'Создаём аккаунт...' : 'Зарегистрироваться'}
           </button>
         </form>
 
-        <p>
-          Already registered? <Link to="/login">Sign in</Link>
-        </p>
+        <div className={styles.links}>
+          <span>
+            Уже зарегистрированы? <Link to="/login">Войти</Link>
+          </span>
+        </div>
       </section>
     </div>
   )

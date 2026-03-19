@@ -1,6 +1,7 @@
 import { createAsyncThunk, createSlice } from '@reduxjs/toolkit'
 
 import { favoritesService } from '@/services/favoritesService'
+import { forceLogout, logoutThunk } from '@/store/slices/authSlice'
 import type { Product } from '@/types/domain'
 import { getErrorMessage } from '@/utils/error'
 
@@ -112,6 +113,9 @@ const favoritesSlice = createSlice({
         state.mutationStatus = 'failed'
         state.error = action.payload as string
       })
+      .addCase(forceLogout, () => initialState)
+      .addCase(logoutThunk.fulfilled, () => initialState)
+      .addCase(logoutThunk.rejected, () => initialState)
   },
 })
 

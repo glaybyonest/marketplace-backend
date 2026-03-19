@@ -1,6 +1,6 @@
 import { apiClient } from '@/services/apiClient'
 import { pickData } from '@/services/serviceUtils'
-import type { AuthResponse } from '@/types/api'
+import type { AuthCodeDispatch, AuthResponse } from '@/types/api'
 import type { User } from '@/types/domain'
 import { normalizeUser } from '@/utils/normalize'
 import { storage } from '@/utils/storage'
@@ -13,6 +13,11 @@ interface Credentials {
 
 interface RegisterPayload extends Credentials {
   name: string
+  phone?: string
+}
+
+interface CodePayload {
+  code: string
 }
 
 interface ActionAcceptedResponse {
@@ -22,6 +27,14 @@ interface ActionAcceptedResponse {
 interface VerifyEmailResult {
   verified: boolean
   user: User
+}
+
+interface EmailCodePayload extends CodePayload {
+  email: string
+}
+
+interface PhoneCodePayload extends CodePayload {
+  phone: string
 }
 
 const normalizeAuthResponse = (raw: unknown): AuthResponse<User> => {
@@ -41,19 +54,58 @@ const normalizeAuthResponse = (raw: unknown): AuthResponse<User> => {
   return { token, refreshToken, tokenType, expiresIn, user, requiresEmailVerification, message }
 }
 
+const normalizeCodeDispatch = (raw: unknown): AuthCodeDispatch => {
+  const source = (pickData<Record<string, unknown>>(raw) ?? {}) as Record<string, unknown>
+
+  return {
+    accepted: Boolean(source.accepted),
+    channel: source.channel === 'phone' ? 'phone' : 'email',
+    maskedDestination:
+      typeof source.masked_destination === 'string'
+        ? source.masked_destination
+        : typeof source.maskedDestination === 'string'
+          ? source.maskedDestination
+          : undefined,
+    expiresIn: Number(source.expires_in ?? source.expiresIn ?? 0) || undefined,
+    devCode: typeof source.dev_code === 'string' ? source.dev_code : typeof source.devCode === 'string' ? source.devCode : undefined,
+    message: typeof source.message === 'string' ? source.message : undefined,
+  }
+}
+
 export const authService = {
   async login(payload: Credentials): Promise<AuthResponse<User>> {
     const response = await apiClient.post('/v1/auth/login', payload)
     return normalizeAuthResponse(response.data)
   },
 
+  async loginWithEmailCode(payload: EmailCodePayload): Promise<AuthResponse<User>> {
+    const response = await apiClient.post('/v1/auth/login/email/confirm', payload)
+    return normalizeAuthResponse(response.data)
+  },
+
+  async loginWithPhoneCode(payload: PhoneCodePayload): Promise<AuthResponse<User>> {
+    const response = await apiClient.post('/v1/auth/login/phone/confirm', payload)
+    return normalizeAuthResponse(response.data)
+  },
+
   async register(payload: RegisterPayload): Promise<AuthResponse<User>> {
     const response = await apiClient.post('/v1/auth/register', {
       email: payload.email,
+      phone: payload.phone?.trim() || undefined,
       password: payload.password,
       full_name: payload.name,
     })
     return normalizeAuthResponse(response.data)
+  },
+
+  async requestEmailLoginCode(email: string): Promise<AuthCodeDispatch> {
+    const response = await apiClient.post('/v1/auth/login/email/request', { email })
+    return normalizeCodeDispatch(response.data)
+  },
+
+  async requestPhoneLoginCode(phone: string): Promise<AuthCodeDispatch> {
+    const response = await apiClient.post('/v1/auth/login/phone/request', { phone })
+    return normalizeCodeDispatch(response.data)
   },
 
   async requestEmailVerification(email: string): Promise<ActionAcceptedResponse> {

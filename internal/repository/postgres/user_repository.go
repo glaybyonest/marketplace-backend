@@ -22,13 +22,13 @@ func NewUserRepository(db *pgxpool.Pool) *UserRepository {
 
 func (r *UserRepository) Create(ctx context.Context, input usecase.CreateUserInput) (domain.User, error) {
 	const q = `
-		INSERT INTO users (email, password_hash, full_name, role, email_verified_at)
-		VALUES ($1, $2, $3, $4, $5)
-		RETURNING id, email, password_hash, full_name, role, created_at, updated_at, is_active, email_verified_at, failed_login_attempts, last_failed_login_at, locked_until
+		INSERT INTO users (email, phone, password_hash, full_name, role, email_verified_at)
+		VALUES ($1, $2, $3, $4, $5, $6)
+		RETURNING id, email, phone, password_hash, full_name, role, created_at, updated_at, is_active, email_verified_at, failed_login_attempts, last_failed_login_at, locked_until
 	`
 
 	var user domain.User
-	err := scanUser(r.db.QueryRow(ctx, q, input.Email, input.PasswordHash, input.FullName, input.Role, input.EmailVerifiedAt), &user)
+	err := scanUser(r.db.QueryRow(ctx, q, input.Email, input.Phone, input.PasswordHash, input.FullName, input.Role, input.EmailVerifiedAt), &user)
 	if err != nil {
 		return domain.User{}, mapError(err)
 	}
@@ -37,7 +37,7 @@ func (r *UserRepository) Create(ctx context.Context, input usecase.CreateUserInp
 
 func (r *UserRepository) GetByEmail(ctx context.Context, email string) (domain.User, error) {
 	const q = `
-		SELECT id, email, password_hash, full_name, role, created_at, updated_at, is_active, email_verified_at, failed_login_attempts, last_failed_login_at, locked_until
+		SELECT id, email, phone, password_hash, full_name, role, created_at, updated_at, is_active, email_verified_at, failed_login_attempts, last_failed_login_at, locked_until
 		FROM users
 		WHERE email = $1
 	`
@@ -50,9 +50,24 @@ func (r *UserRepository) GetByEmail(ctx context.Context, email string) (domain.U
 	return user, nil
 }
 
+func (r *UserRepository) GetByPhone(ctx context.Context, phone string) (domain.User, error) {
+	const q = `
+		SELECT id, email, phone, password_hash, full_name, role, created_at, updated_at, is_active, email_verified_at, failed_login_attempts, last_failed_login_at, locked_until
+		FROM users
+		WHERE phone = $1
+	`
+
+	var user domain.User
+	err := scanUser(r.db.QueryRow(ctx, q, phone), &user)
+	if err != nil {
+		return domain.User{}, mapError(err)
+	}
+	return user, nil
+}
+
 func (r *UserRepository) GetByID(ctx context.Context, id uuid.UUID) (domain.User, error) {
 	const q = `
-		SELECT id, email, password_hash, full_name, role, created_at, updated_at, is_active, email_verified_at, failed_login_attempts, last_failed_login_at, locked_until
+		SELECT id, email, phone, password_hash, full_name, role, created_at, updated_at, is_active, email_verified_at, failed_login_attempts, last_failed_login_at, locked_until
 		FROM users
 		WHERE id = $1
 	`
@@ -70,11 +85,27 @@ func (r *UserRepository) UpdateFullName(ctx context.Context, id uuid.UUID, fullN
 		UPDATE users
 		SET full_name = $2
 		WHERE id = $1
-		RETURNING id, email, password_hash, full_name, role, created_at, updated_at, is_active, email_verified_at, failed_login_attempts, last_failed_login_at, locked_until
+		RETURNING id, email, phone, password_hash, full_name, role, created_at, updated_at, is_active, email_verified_at, failed_login_attempts, last_failed_login_at, locked_until
 	`
 
 	var user domain.User
 	err := scanUser(r.db.QueryRow(ctx, q, id, fullName), &user)
+	if err != nil {
+		return domain.User{}, mapError(err)
+	}
+	return user, nil
+}
+
+func (r *UserRepository) UpdatePhone(ctx context.Context, id uuid.UUID, phone *string) (domain.User, error) {
+	const q = `
+		UPDATE users
+		SET phone = $2
+		WHERE id = $1
+		RETURNING id, email, phone, password_hash, full_name, role, created_at, updated_at, is_active, email_verified_at, failed_login_attempts, last_failed_login_at, locked_until
+	`
+
+	var user domain.User
+	err := scanUser(r.db.QueryRow(ctx, q, id, phone), &user)
 	if err != nil {
 		return domain.User{}, mapError(err)
 	}
@@ -101,7 +132,7 @@ func (r *UserRepository) MarkEmailVerified(ctx context.Context, id uuid.UUID, ve
 		UPDATE users
 		SET email_verified_at = $2
 		WHERE id = $1
-		RETURNING id, email, password_hash, full_name, role, created_at, updated_at, is_active, email_verified_at, failed_login_attempts, last_failed_login_at, locked_until
+		RETURNING id, email, phone, password_hash, full_name, role, created_at, updated_at, is_active, email_verified_at, failed_login_attempts, last_failed_login_at, locked_until
 	`
 
 	var user domain.User
@@ -151,7 +182,7 @@ func (r *UserRepository) RegisterFailedLogin(
 				ELSE locked_until
 			END
 		WHERE id = $5
-		RETURNING id, email, password_hash, full_name, role, created_at, updated_at, is_active, email_verified_at, failed_login_attempts, last_failed_login_at, locked_until
+		RETURNING id, email, phone, password_hash, full_name, role, created_at, updated_at, is_active, email_verified_at, failed_login_attempts, last_failed_login_at, locked_until
 	`
 
 	var user domain.User
@@ -184,6 +215,7 @@ func scanUser(row pgx.Row, user *domain.User) error {
 	err := row.Scan(
 		&user.ID,
 		&user.Email,
+		&user.Phone,
 		&user.PasswordHash,
 		&user.FullName,
 		&user.Role,

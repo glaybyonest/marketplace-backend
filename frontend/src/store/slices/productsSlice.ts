@@ -1,6 +1,7 @@
 import { createAsyncThunk, createSlice } from '@reduxjs/toolkit'
 
 import { productService } from '@/services/productService'
+import { forceLogout, logoutThunk } from '@/store/slices/authSlice'
 import type { ProductFilters } from '@/types/api'
 import type { Product } from '@/types/domain'
 import { getErrorMessage } from '@/utils/error'
@@ -57,11 +58,11 @@ export const searchProductsThunk = createAsyncThunk(
   },
 )
 
-export const fetchProductByIdThunk = createAsyncThunk(
-  'products/fetchProductById',
-  async (id: string, { rejectWithValue }) => {
+export const fetchProductThunk = createAsyncThunk(
+  'products/fetchProduct',
+  async (productRef: string, { rejectWithValue }) => {
     try {
-      return await productService.getProductById(id)
+      return await productService.getProduct(productRef)
     } catch (error) {
       return rejectWithValue(getErrorMessage(error, 'Failed to load product'))
     }
@@ -166,15 +167,15 @@ const productsSlice = createSlice({
         state.status = 'failed'
         state.error = action.payload as string
       })
-      .addCase(fetchProductByIdThunk.pending, (state) => {
+      .addCase(fetchProductThunk.pending, (state) => {
         state.detailStatus = 'loading'
         state.error = null
       })
-      .addCase(fetchProductByIdThunk.fulfilled, (state, action) => {
+      .addCase(fetchProductThunk.fulfilled, (state, action) => {
         state.detailStatus = 'succeeded'
         state.selectedProduct = action.payload
       })
-      .addCase(fetchProductByIdThunk.rejected, (state, action) => {
+      .addCase(fetchProductThunk.rejected, (state, action) => {
         state.detailStatus = 'failed'
         state.error = action.payload as string
       })
@@ -216,6 +217,9 @@ const productsSlice = createSlice({
         state.mutationStatus = 'failed'
         state.error = action.payload as string
       })
+      .addCase(forceLogout, () => initialState)
+      .addCase(logoutThunk.fulfilled, () => initialState)
+      .addCase(logoutThunk.rejected, () => initialState)
   },
 })
 

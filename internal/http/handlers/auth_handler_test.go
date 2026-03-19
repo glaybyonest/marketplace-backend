@@ -22,6 +22,10 @@ import (
 type authServiceStub struct {
 	registerFn                 func(ctx context.Context, input usecase.RegisterInput) (domain.AuthResult, error)
 	loginFn                    func(ctx context.Context, input usecase.LoginInput) (domain.AuthResult, error)
+	requestEmailLoginCodeFn    func(ctx context.Context, input usecase.EmailCodeRequestInput) (domain.AuthCodeDispatch, error)
+	loginWithEmailCodeFn       func(ctx context.Context, input usecase.EmailCodeLoginInput) (domain.AuthResult, error)
+	requestPhoneLoginCodeFn    func(ctx context.Context, input usecase.PhoneCodeRequestInput) (domain.AuthCodeDispatch, error)
+	loginWithPhoneCodeFn       func(ctx context.Context, input usecase.PhoneCodeLoginInput) (domain.AuthResult, error)
 	refreshFn                  func(ctx context.Context, input usecase.RefreshInput) (domain.TokenPair, error)
 	logoutFn                   func(ctx context.Context, input usecase.LogoutInput) error
 	logoutAllFn                func(ctx context.Context, userID uuid.UUID) error
@@ -40,6 +44,22 @@ func (s *authServiceStub) Register(ctx context.Context, input usecase.RegisterIn
 
 func (s *authServiceStub) Login(ctx context.Context, input usecase.LoginInput) (domain.AuthResult, error) {
 	return s.loginFn(ctx, input)
+}
+
+func (s *authServiceStub) RequestEmailLoginCode(ctx context.Context, input usecase.EmailCodeRequestInput) (domain.AuthCodeDispatch, error) {
+	return s.requestEmailLoginCodeFn(ctx, input)
+}
+
+func (s *authServiceStub) LoginWithEmailCode(ctx context.Context, input usecase.EmailCodeLoginInput) (domain.AuthResult, error) {
+	return s.loginWithEmailCodeFn(ctx, input)
+}
+
+func (s *authServiceStub) RequestPhoneLoginCode(ctx context.Context, input usecase.PhoneCodeRequestInput) (domain.AuthCodeDispatch, error) {
+	return s.requestPhoneLoginCodeFn(ctx, input)
+}
+
+func (s *authServiceStub) LoginWithPhoneCode(ctx context.Context, input usecase.PhoneCodeLoginInput) (domain.AuthResult, error) {
+	return s.loginWithPhoneCodeFn(ctx, input)
 }
 
 func (s *authServiceStub) Refresh(ctx context.Context, input usecase.RefreshInput) (domain.TokenPair, error) {
@@ -104,6 +124,32 @@ func TestAuthHandler(t *testing.T) {
 				},
 			}, nil
 		},
+		requestEmailLoginCodeFn: func(ctx context.Context, input usecase.EmailCodeRequestInput) (domain.AuthCodeDispatch, error) {
+			return domain.AuthCodeDispatch{Accepted: true, Channel: domain.AuthCodeChannelEmail, MaskedDestination: "u***r@example.com"}, nil
+		},
+		loginWithEmailCodeFn: func(ctx context.Context, input usecase.EmailCodeLoginInput) (domain.AuthResult, error) {
+			return domain.AuthResult{
+				User: domain.User{ID: userID, Email: input.Email, Role: domain.UserRoleCustomer},
+				Tokens: &domain.TokenPair{
+					AccessToken:  "a-email",
+					RefreshToken: "r-email",
+					TokenType:    "Bearer",
+				},
+			}, nil
+		},
+		requestPhoneLoginCodeFn: func(ctx context.Context, input usecase.PhoneCodeRequestInput) (domain.AuthCodeDispatch, error) {
+			return domain.AuthCodeDispatch{Accepted: true, Channel: domain.AuthCodeChannelPhone, MaskedDestination: "+79*****67"}, nil
+		},
+		loginWithPhoneCodeFn: func(ctx context.Context, input usecase.PhoneCodeLoginInput) (domain.AuthResult, error) {
+			return domain.AuthResult{
+				User: domain.User{ID: userID, Email: "user@example.com", Phone: input.Phone, Role: domain.UserRoleCustomer},
+				Tokens: &domain.TokenPair{
+					AccessToken:  "a-phone",
+					RefreshToken: "r-phone",
+					TokenType:    "Bearer",
+				},
+			}, nil
+		},
 		refreshFn: func(ctx context.Context, input usecase.RefreshInput) (domain.TokenPair, error) {
 			return domain.TokenPair{AccessToken: "a2", RefreshToken: "r2", TokenType: "Bearer"}, nil
 		},
@@ -151,6 +197,34 @@ func TestAuthHandler(t *testing.T) {
 		req := httptest.NewRequest(http.MethodPost, "/login", strings.NewReader(`{"email":"user@example.com","password":"StrongPass1"}`))
 		rec := httptest.NewRecorder()
 		handler.Login(rec, req)
+		assert.Equal(t, http.StatusOK, rec.Code)
+	})
+
+	t.Run("request email code success", func(t *testing.T) {
+		req := httptest.NewRequest(http.MethodPost, "/login/email/request", strings.NewReader(`{"email":"user@example.com"}`))
+		rec := httptest.NewRecorder()
+		handler.RequestEmailLoginCode(rec, req)
+		assert.Equal(t, http.StatusOK, rec.Code)
+	})
+
+	t.Run("confirm email code success", func(t *testing.T) {
+		req := httptest.NewRequest(http.MethodPost, "/login/email/confirm", strings.NewReader(`{"email":"user@example.com","code":"123456"}`))
+		rec := httptest.NewRecorder()
+		handler.LoginWithEmailCode(rec, req)
+		assert.Equal(t, http.StatusOK, rec.Code)
+	})
+
+	t.Run("request phone code success", func(t *testing.T) {
+		req := httptest.NewRequest(http.MethodPost, "/login/phone/request", strings.NewReader(`{"phone":"+79991234567"}`))
+		rec := httptest.NewRecorder()
+		handler.RequestPhoneLoginCode(rec, req)
+		assert.Equal(t, http.StatusOK, rec.Code)
+	})
+
+	t.Run("confirm phone code success", func(t *testing.T) {
+		req := httptest.NewRequest(http.MethodPost, "/login/phone/confirm", strings.NewReader(`{"phone":"+79991234567","code":"123456"}`))
+		rec := httptest.NewRecorder()
+		handler.LoginWithPhoneCode(rec, req)
 		assert.Equal(t, http.StatusOK, rec.Code)
 	})
 

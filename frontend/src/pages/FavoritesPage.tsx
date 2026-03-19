@@ -6,6 +6,7 @@ import { ErrorMessage } from '@/components/common/ErrorMessage'
 import { useAppDispatch, useAppSelector } from '@/store/hooks'
 import { fetchFavoritesThunk, removeFavoriteThunk } from '@/store/slices/favoritesSlice'
 import { formatCurrency } from '@/utils/format'
+import { getProductPath } from '@/utils/productRef'
 
 import styles from '@/pages/FavoritesPage.module.scss'
 
@@ -25,38 +26,57 @@ export const FavoritesPage = () => {
 
   return (
     <div className={styles.page}>
-      <h1>Favorites</h1>
-      {status === 'loading' ? <AppLoader label="Loading favorites..." /> : null}
+      <header className={styles.header}>
+        <div>
+          <span className="badge-pill">Избранное</span>
+          <h1>Сохранённые товары</h1>
+          <p>Возвращайтесь к понравившимся позициям, сравнивайте цены и открывайте карточки товара без повторного поиска.</p>
+        </div>
+      </header>
+
+      {status === 'loading' ? <AppLoader label="Загружаем избранное..." /> : null}
       {error ? <ErrorMessage message={error} /> : null}
 
       {items.length === 0 ? (
-        <p>
-          No favorites yet. <Link to="/">Browse catalog</Link>
-        </p>
+        <section className={`${styles.empty} empty-state`}>
+          <h2>В избранном пока ничего нет</h2>
+          <p>Сохраняйте товары с главной или из карточки товара, чтобы быстро вернуться к ним позже.</p>
+          <Link to="/" className="action-primary">
+            Перейти в каталог
+          </Link>
+        </section>
       ) : (
-        <div className={styles.content}>
-          <section className={styles.list}>
-            {items.map((item) => (
-              <article key={item.id} className={styles.item}>
+        <section className={styles.list}>
+          {items.map((item) => (
+            <article key={item.id} className={styles.item}>
+              <Link to={getProductPath(item)} className={styles.imageWrap}>
                 <img
                   src={item.imageUrl ?? item.images[0] ?? FALLBACK_IMAGE}
                   alt={item.title}
                   className={styles.image}
                 />
-                <div className={styles.itemInfo}>
-                  <h3>
-                    <Link to={`/products/${item.id}`}>{item.title}</Link>
-                  </h3>
-                  <p>{item.brand || item.categoryName || 'Catalog item'}</p>
-                  <strong>{formatCurrency(item.price, item.currency)}</strong>
-                </div>
-                <button type="button" onClick={() => handleDelete(item.id)} disabled={mutationStatus === 'loading'}>
-                  Remove
+              </Link>
+
+              <div className={styles.itemInfo}>
+                <span className="badge-pill">{item.categoryName || 'Каталог'}</span>
+                <h2>
+                  <Link to={getProductPath(item)}>{item.title}</Link>
+                </h2>
+                <p>{item.brand || 'Товар из вашего каталога'}</p>
+              </div>
+
+              <div className={styles.itemActions}>
+                <strong>{formatCurrency(item.price, item.currency)}</strong>
+                <Link to={getProductPath(item)} className="action-secondary">
+                  Открыть товар
+                </Link>
+                <button type="button" className="action-danger" onClick={() => handleDelete(item.id)} disabled={mutationStatus === 'loading'}>
+                  Удалить
                 </button>
-              </article>
-            ))}
-          </section>
-        </div>
+              </div>
+            </article>
+          ))}
+        </section>
       )}
     </div>
   )

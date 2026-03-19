@@ -2,6 +2,7 @@ import { apiClient } from '@/services/apiClient'
 import { pickData, toPaginated } from '@/services/serviceUtils'
 import type { PaginatedResponse, ProductFilters } from '@/types/api'
 import type { PopularSearch, Product, SearchSuggestion } from '@/types/domain'
+import { isUUIDLike } from '@/utils/productRef'
 import { normalizeProduct } from '@/utils/normalize'
 
 interface ProductPayload {
@@ -89,6 +90,13 @@ const toProductRequestBody = (payload: ProductPayload) => ({
   is_active: payload.isActive,
 })
 
+const getProductRequestPath = (ref: string) => {
+  const normalized = ref.trim()
+  return isUUIDLike(normalized)
+    ? `/v1/products/${normalized}`
+    : `/v1/products/slug/${encodeURIComponent(normalized)}`
+}
+
 export const productService = {
   async getProducts(filters: ProductFilters = {}): Promise<PaginatedResponse<Product>> {
     const response = await apiClient.get('/v1/products', { params: mapFilters(filters) })
@@ -132,9 +140,17 @@ export const productService = {
       : []
   },
 
-  async getProductById(id: string): Promise<Product> {
-    const response = await apiClient.get(`/v1/products/${id}`)
+  async getProduct(ref: string): Promise<Product> {
+    const response = await apiClient.get(getProductRequestPath(ref))
     return normalizeProduct(pickData(response.data))
+  },
+
+  async getProductById(id: string): Promise<Product> {
+    return productService.getProduct(id)
+  },
+
+  async getProductBySlug(slug: string): Promise<Product> {
+    return productService.getProduct(slug)
   },
 
   async getAdminProducts(filters: ProductFilters = {}): Promise<PaginatedResponse<Product>> {

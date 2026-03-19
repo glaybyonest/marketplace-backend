@@ -92,6 +92,10 @@ func NewRouter(deps Dependencies) http.Handler {
 
 			r.With(deps.RateLimiter.Middleware(deps.Security.RegisterRatePolicy)).Post("/register", authHandler.Register)
 			r.With(deps.RateLimiter.Middleware(deps.Security.LoginRatePolicy)).Post("/login", authHandler.Login)
+			r.With(deps.RateLimiter.Middleware(deps.Security.LoginRatePolicy)).Post("/login/email/request", authHandler.RequestEmailLoginCode)
+			r.With(deps.RateLimiter.Middleware(deps.Security.LoginRatePolicy)).Post("/login/email/confirm", authHandler.LoginWithEmailCode)
+			r.With(deps.RateLimiter.Middleware(deps.Security.LoginRatePolicy)).Post("/login/phone/request", authHandler.RequestPhoneLoginCode)
+			r.With(deps.RateLimiter.Middleware(deps.Security.LoginRatePolicy)).Post("/login/phone/confirm", authHandler.LoginWithPhoneCode)
 			r.With(deps.RateLimiter.Middleware(deps.Security.RefreshRatePolicy), csrfMiddleware.Handler).Post("/refresh", authHandler.Refresh)
 			r.With(deps.RateLimiter.Middleware(deps.Security.VerifyEmailRatePolicy)).Post("/verify-email/request", authHandler.RequestEmailVerification)
 			r.With(deps.RateLimiter.Middleware(deps.Security.VerifyEmailRatePolicy)).Post("/verify-email/confirm", authHandler.ConfirmEmailVerification)

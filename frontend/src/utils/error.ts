@@ -34,6 +34,10 @@ export const getErrorMessage = (error: unknown, fallback = 'Request failed') => 
     return 'Invalid email or password'
   }
 
+  if (backendCode === 'invalid_login_code') {
+    return 'Invalid or expired login code'
+  }
+
   if (backendCode === 'email_not_verified') {
     return 'Verify your email before signing in'
   }

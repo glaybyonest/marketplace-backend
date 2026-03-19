@@ -43,14 +43,14 @@ export const VerifyEmailPage = () => {
           return
         }
         setConfirmStatus('success')
-        setMessage('Your email has been verified. You can sign in now.')
+        setMessage('Email подтверждён. Теперь можно входить в аккаунт.')
       })
       .catch((requestError: unknown) => {
         if (cancelled) {
           return
         }
         setConfirmStatus('failed')
-        setError(getErrorMessage(requestError, 'Failed to verify email'))
+        setError(getErrorMessage(requestError, 'Не удалось подтвердить email'))
       })
 
     return () => {
@@ -62,7 +62,7 @@ export const VerifyEmailPage = () => {
     event.preventDefault()
 
     if (!email.trim()) {
-      setError('Enter your email')
+      setError('Укажите email')
       return
     }
 
@@ -72,26 +72,50 @@ export const VerifyEmailPage = () => {
     try {
       await authService.requestEmailVerification(email.trim())
       setRequestStatus('success')
-      setMessage('If an unverified account exists for this email, a new verification link has been sent.')
+      setMessage('Если для этого email есть неподтверждённый аккаунт, мы отправили новое письмо.')
     } catch (requestError) {
       setRequestStatus('failed')
-      setError(getErrorMessage(requestError, 'Failed to send verification email'))
+      setError(getErrorMessage(requestError, 'Не удалось отправить письмо с подтверждением'))
     }
   }
 
   return (
     <div className={styles.page}>
-      <section className={styles.card}>
-        <h1>Verify email</h1>
-        <p>Confirm your email address to activate sign-in and password reset flows.</p>
+      <section className={styles.showcase}>
+        <div>
+          <span className={styles.showcaseBadge}>Подтверждение</span>
+          <h2 className={styles.showcaseTitle}>Активируйте email и включите все сценарии аккаунта</h2>
+          <p className={styles.showcaseText}>
+            После подтверждения станут доступны вход, восстановление пароля и полноценная работа личного кабинета.
+          </p>
+        </div>
 
-        {confirmStatus === 'loading' ? <AppLoader label="Verifying email..." /> : null}
+        <div className={styles.showcaseList}>
+          <div>
+            <strong>Без ручной модерации</strong>
+            <p>Проверка email полностью автоматизирована на стороне вашего backend.</p>
+          </div>
+          <div>
+            <strong>Повторная отправка</strong>
+            <p>Если письмо не дошло, можно сразу запросить новую ссылку.</p>
+          </div>
+        </div>
+      </section>
+
+      <section className={styles.card}>
+        <div className={styles.cardHeader}>
+          <span className="badge-pill">Email</span>
+          <h1>Подтвердите почту</h1>
+          <p>Это нужно для безопасного входа и восстановления доступа к аккаунту.</p>
+        </div>
+
+        {confirmStatus === 'loading' ? <AppLoader label="Проверяем ссылку..." /> : null}
         {message ? <div className={confirmStatus === 'success' ? styles.success : styles.notice}>{message}</div> : null}
         {error ? <ErrorMessage message={error} /> : null}
 
         {confirmStatus === 'success' ? (
           <div className={styles.actions}>
-            <Link to="/login">Go to sign in</Link>
+            <Link to="/login">Перейти ко входу</Link>
           </div>
         ) : null}
 
@@ -111,14 +135,14 @@ export const VerifyEmailPage = () => {
                 />
               </label>
               <button type="submit" disabled={requestStatus === 'loading'}>
-                {requestStatus === 'loading' ? 'Sending...' : 'Send verification email'}
+                {requestStatus === 'loading' ? 'Отправляем...' : 'Отправить письмо повторно'}
               </button>
             </form>
 
             <div className={styles.links}>
-              <Link to="/login">Back to sign in</Link>
+              <Link to="/login">Вернуться ко входу</Link>
               <span>
-                Need a new account? <Link to="/register">Register</Link>
+                Нужен новый аккаунт? <Link to="/register">Зарегистрироваться</Link>
               </span>
             </div>
           </>

@@ -1,6 +1,7 @@
 import { createAsyncThunk, createSlice } from '@reduxjs/toolkit'
 
 import { placesService } from '@/services/placesService'
+import { forceLogout, logoutThunk } from '@/store/slices/authSlice'
 import type { Place } from '@/types/domain'
 import { getErrorMessage } from '@/utils/error'
 
@@ -116,6 +117,9 @@ const placesSlice = createSlice({
         state.mutationStatus = 'failed'
         state.error = action.payload as string
       })
+      .addCase(forceLogout, () => initialState)
+      .addCase(logoutThunk.fulfilled, () => initialState)
+      .addCase(logoutThunk.rejected, () => initialState)
   },
 })
 

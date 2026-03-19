@@ -119,7 +119,7 @@ export const AdminProductsPage = () => {
         ),
       )
     } catch (loadError) {
-      setError(getErrorMessage(loadError, 'Failed to load products'))
+      setError(getErrorMessage(loadError, 'Не удалось загрузить товары'))
     } finally {
       setLoading(false)
     }
@@ -130,7 +130,7 @@ export const AdminProductsPage = () => {
       const nextCategories = await categoryService.getCategories()
       setCategories(nextCategories)
     } catch (loadError) {
-      setError(getErrorMessage(loadError, 'Failed to load categories'))
+      setError(getErrorMessage(loadError, 'Не удалось загрузить категории'))
     }
   }, [])
 
@@ -204,7 +204,7 @@ export const AdminProductsPage = () => {
       await loadProducts(filters)
       resetForm()
     } catch (submitError) {
-      setError(getErrorMessage(submitError, 'Failed to save product'))
+      setError(getErrorMessage(submitError, 'Не удалось сохранить товар'))
     } finally {
       setSubmitting(false)
     }
@@ -218,7 +218,7 @@ export const AdminProductsPage = () => {
       await productService.updateProductStock(product.id, nextStock)
       await loadProducts(filters)
     } catch (stockError) {
-      setError(getErrorMessage(stockError, 'Failed to update stock'))
+      setError(getErrorMessage(stockError, 'Не удалось обновить остаток'))
     } finally {
       setSubmitting(false)
     }
@@ -241,14 +241,14 @@ export const AdminProductsPage = () => {
         setFormState((current) => ({ ...current, isActive: !(product.isActive ?? true) }))
       }
     } catch (toggleError) {
-      setError(getErrorMessage(toggleError, 'Failed to update product status'))
+      setError(getErrorMessage(toggleError, 'Не удалось обновить статус товара'))
     } finally {
       setSubmitting(false)
     }
   }
 
   const handleArchive = async (product: Product) => {
-    if (!window.confirm(`Archive product "${product.title}"?`)) {
+    if (!window.confirm(`Отправить товар «${product.title}» в архив?`)) {
       return
     }
 
@@ -261,7 +261,7 @@ export const AdminProductsPage = () => {
         resetForm()
       }
     } catch (deleteError) {
-      setError(getErrorMessage(deleteError, 'Failed to archive product'))
+      setError(getErrorMessage(deleteError, 'Не удалось архивировать товар'))
     } finally {
       setSubmitting(false)
     }
@@ -279,24 +279,25 @@ export const AdminProductsPage = () => {
     <div className={styles.page}>
       <section className={styles.hero}>
         <div>
-          <h1>Products</h1>
-          <p>Manage catalog cards, stock, and visibility for customer-facing products.</p>
+          <span className="badge-pill">Товары</span>
+          <h1>Карточки каталога и остатки</h1>
+          <p>Управляйте контентом карточек, характеристиками, ценами, медиа, остатками и видимостью товаров на публичной витрине.</p>
         </div>
         <AdminNav />
       </section>
 
-      {loading ? <AppLoader label="Loading products..." /> : null}
+      {loading ? <AppLoader label="Загружаем товары..." /> : null}
       {error ? <ErrorMessage message={error} /> : null}
 
       <section className={styles.contentGrid}>
         <article className={styles.panel}>
-          <h2>{editingProduct ? 'Edit product' : 'New product'}</h2>
-          <p>Fields match backend product model: category, stock, media, brand, unit, and specs JSON.</p>
+          <h2>{editingProduct ? 'Редактирование товара' : 'Новый товар'}</h2>
+          <p>Форма соответствует backend-модели: категория, цена, остаток, бренд, единица продажи, медиа и JSON-характеристики.</p>
 
           <form className={styles.form} onSubmit={handleSubmit}>
             <div className={styles.fieldGrid}>
               <label>
-                Name
+                Название
                 <input
                   value={formState.name}
                   onChange={(event) => setFormState((current) => ({ ...current, name: event.target.value }))}
@@ -308,7 +309,7 @@ export const AdminProductsPage = () => {
                 <input
                   value={formState.slug}
                   onChange={(event) => setFormState((current) => ({ ...current, slug: event.target.value }))}
-                  placeholder="Optional"
+                  placeholder="Необязательно"
                 />
               </label>
               <label>
@@ -320,13 +321,13 @@ export const AdminProductsPage = () => {
                 />
               </label>
               <label>
-                Category
+                Категория
                 <select
                   value={formState.categoryId}
                   onChange={(event) => setFormState((current) => ({ ...current, categoryId: event.target.value }))}
                   required
                 >
-                  <option value="">Select category</option>
+                  <option value="">Выберите категорию</option>
                   {categories.map((category) => (
                     <option key={category.id} value={category.id}>
                       {category.name}
@@ -335,7 +336,7 @@ export const AdminProductsPage = () => {
                 </select>
               </label>
               <label>
-                Price
+                Цена
                 <input
                   type="number"
                   min="0"
@@ -346,7 +347,7 @@ export const AdminProductsPage = () => {
                 />
               </label>
               <label>
-                Currency
+                Валюта
                 <input
                   value={formState.currency}
                   onChange={(event) => setFormState((current) => ({ ...current, currency: event.target.value.toUpperCase() }))}
@@ -354,7 +355,7 @@ export const AdminProductsPage = () => {
                 />
               </label>
               <label>
-                Stock
+                Остаток
                 <input
                   type="number"
                   min="0"
@@ -364,22 +365,22 @@ export const AdminProductsPage = () => {
                 />
               </label>
               <label>
-                Unit
+                Единица продажи
                 <input
                   value={formState.unit}
                   onChange={(event) => setFormState((current) => ({ ...current, unit: event.target.value }))}
-                  placeholder="bag / piece / sheet"
+                  placeholder="шт. / уп. / кг"
                 />
               </label>
               <label>
-                Brand
+                Бренд
                 <input
                   value={formState.brand}
                   onChange={(event) => setFormState((current) => ({ ...current, brand: event.target.value }))}
                 />
               </label>
               <label>
-                Cover image URL
+                URL обложки
                 <input
                   value={formState.imageUrl}
                   onChange={(event) => setFormState((current) => ({ ...current, imageUrl: event.target.value }))}
@@ -389,7 +390,7 @@ export const AdminProductsPage = () => {
             </div>
 
             <label>
-              Description
+              Описание
               <textarea
                 value={formState.description}
                 onChange={(event) => setFormState((current) => ({ ...current, description: event.target.value }))}
@@ -397,16 +398,16 @@ export const AdminProductsPage = () => {
             </label>
 
             <label>
-              Gallery URLs
+              Галерея изображений
               <textarea
                 value={formState.imagesText}
                 onChange={(event) => setFormState((current) => ({ ...current, imagesText: event.target.value }))}
-                placeholder={'One URL per line'}
+                placeholder="По одному URL в строке"
               />
             </label>
 
             <label>
-              Specs JSON
+              JSON характеристик
               <textarea
                 value={formState.specsText}
                 onChange={(event) => setFormState((current) => ({ ...current, specsText: event.target.value }))}
@@ -419,15 +420,15 @@ export const AdminProductsPage = () => {
                 checked={formState.isActive}
                 onChange={(event) => setFormState((current) => ({ ...current, isActive: event.target.checked }))}
               />
-              Visible in public catalog
+              Показывать товар на публичной витрине
             </label>
 
             <div className={styles.formActions}>
               <button type="submit" className={styles.primaryButton} disabled={submitting}>
-                {submitting ? 'Saving...' : editingProduct ? 'Update product' : 'Create product'}
+                {submitting ? 'Сохраняем...' : editingProduct ? 'Обновить товар' : 'Создать товар'}
               </button>
               <button type="button" className={styles.secondaryButton} onClick={resetForm} disabled={submitting}>
-                Reset
+                Сбросить форму
               </button>
             </div>
           </form>
@@ -436,8 +437,8 @@ export const AdminProductsPage = () => {
         <article className={styles.panel}>
           <div className={styles.toolbar}>
             <div>
-              <h2>Catalog inventory</h2>
-              <p>{total} products found.</p>
+              <h2>Каталог товаров</h2>
+              <p>Найдено: {total}</p>
             </div>
             <form
               className={styles.toolbarFilters}
@@ -449,13 +450,13 @@ export const AdminProductsPage = () => {
               <input
                 value={searchDraft}
                 onChange={(event) => setSearchDraft(event.target.value)}
-                placeholder="Search by name, brand, SKU..."
+                placeholder="Поиск по названию, бренду, SKU..."
               />
               <select
                 value={filters.category_id ?? ''}
                 onChange={(event) => applyFilters({ category_id: event.target.value || undefined })}
               >
-                <option value="">All categories</option>
+                <option value="">Все категории</option>
                 {categories.map((category) => (
                   <option key={category.id} value={category.id}>
                     {category.name}
@@ -477,20 +478,20 @@ export const AdminProductsPage = () => {
                   })
                 }}
               >
-                <option value="all">All statuses</option>
-                <option value="active">Active</option>
-                <option value="hidden">Hidden</option>
+                <option value="all">Все статусы</option>
+                <option value="active">Активные</option>
+                <option value="hidden">Скрытые</option>
               </select>
               <button type="submit" className={styles.primaryButton}>
-                Apply
+                Применить
               </button>
             </form>
           </div>
 
           {items.length === 0 && !loading ? (
             <div className={styles.empty}>
-              <h2>No products yet</h2>
-              <p>Create a product or relax the current filters.</p>
+              <h2>Товары не найдены</h2>
+              <p>Создайте товар или ослабьте текущие фильтры.</p>
             </div>
           ) : (
             <div className={styles.list}>
@@ -507,26 +508,26 @@ export const AdminProductsPage = () => {
                         <div>
                           <h3>{product.title}</h3>
                           <p className={styles.listMeta}>
-                            {categoryMap.get(product.categoryId) ?? 'Unknown category'} · SKU {product.sku ?? '-'}
+                            {categoryMap.get(product.categoryId) ?? 'Неизвестная категория'} • SKU {product.sku ?? '-'}
                           </p>
                         </div>
                         <div className={styles.badgeRow}>
                           <span className={product.isActive ? styles.badge : styles.badgeDanger}>
-                            {product.isActive ? 'Active' : 'Hidden'}
+                            {product.isActive ? 'Активен' : 'Скрыт'}
                           </span>
-                          <span className={styles.badgeMuted}>Stock: {product.stock ?? 0}</span>
+                          <span className={styles.badgeMuted}>Остаток: {product.stock ?? 0}</span>
                         </div>
                       </div>
 
                       <div className={styles.productSummary}>
                         <p className={styles.muted}>
-                          {product.brand ? `${product.brand} · ` : ''}
-                          {product.unit ? `${product.unit} · ` : ''}
+                          {product.brand ? `${product.brand} • ` : ''}
+                          {product.unit ? `${product.unit} • ` : ''}
                           {formatCurrency(product.price, product.currency ?? 'RUB')}
                         </p>
                         <div className={styles.rowActions}>
                           <button type="button" className={styles.ghostButton} onClick={() => handleEdit(product)}>
-                            Edit
+                            Изменить
                           </button>
                           <button
                             type="button"
@@ -534,7 +535,7 @@ export const AdminProductsPage = () => {
                             onClick={() => handleToggleActive(product)}
                             disabled={submitting}
                           >
-                            {product.isActive ? 'Hide' : 'Restore'}
+                            {product.isActive ? 'Скрыть' : 'Вернуть'}
                           </button>
                           <button
                             type="button"
@@ -542,7 +543,7 @@ export const AdminProductsPage = () => {
                             onClick={() => handleArchive(product)}
                             disabled={submitting}
                           >
-                            Archive
+                            В архив
                           </button>
                         </div>
                       </div>
@@ -569,7 +570,7 @@ export const AdminProductsPage = () => {
                         }}
                       >
                         <label>
-                          Stock
+                          Остаток
                           <input
                             type="number"
                             min="0"
@@ -583,7 +584,7 @@ export const AdminProductsPage = () => {
                           />
                         </label>
                         <button type="submit" className={styles.primaryButton} disabled={submitting}>
-                          Save stock
+                          Сохранить остаток
                         </button>
                       </form>
                     </div>
@@ -601,10 +602,10 @@ export const AdminProductsPage = () => {
                 disabled={page <= 1}
                 onClick={() => applyFilters({ page: page - 1 })}
               >
-                Prev
+                Назад
               </button>
               <span className={styles.helperText}>
-                Page {page} of {totalPages}
+                Страница {page} из {totalPages}
               </span>
               <button
                 type="button"
@@ -612,7 +613,7 @@ export const AdminProductsPage = () => {
                 disabled={page >= totalPages}
                 onClick={() => applyFilters({ page: page + 1 })}
               >
-                Next
+                Дальше
               </button>
             </div>
           ) : null}

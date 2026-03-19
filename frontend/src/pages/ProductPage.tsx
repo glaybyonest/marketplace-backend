@@ -1,33 +1,40 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 
+import { ProductCard } from '@/components/catalog/ProductCard'
 import { AppLoader } from '@/components/common/AppLoader'
 import { ErrorMessage } from '@/components/common/ErrorMessage'
+import { productService } from '@/services/productService'
 import { useAppDispatch, useAppSelector } from '@/store/hooks'
 import { addCartItemThunk } from '@/store/slices/cartSlice'
 import { addFavoriteThunk, removeFavoriteThunk } from '@/store/slices/favoritesSlice'
-import { fetchProductByIdThunk } from '@/store/slices/productsSlice'
-import { fetchRecommendationsThunk } from '@/store/slices/recommendationsSlice'
+import { fetchPlacesThunk } from '@/store/slices/placesSlice'
+import { fetchProductThunk } from '@/store/slices/productsSlice'
+import type { Product } from '@/types/domain'
 import { formatCurrency } from '@/utils/format'
 
 import styles from '@/pages/ProductPage.module.scss'
 
 const FALLBACK_IMAGE = 'https://placehold.co/1200x900/f3f4f6/6b7280?text=No+Image'
 
-const formatSpecLabel = (key: string) => key.replaceAll('_', ' ')
+const formatSpecLabel = (key: string) =>
+  key
+    .replaceAll('_', ' ')
+    .replaceAll('-', ' ')
+    .replace(/\b\w/g, (letter) => letter.toUpperCase())
 
 const formatSpecValue = (value: string | number | boolean | null) => {
   if (value === null) {
-    return '-'
+    return 'Не указано'
   }
   if (typeof value === 'boolean') {
-    return value ? 'Yes' : 'No'
+    return value ? 'Да' : 'Нет'
   }
   return String(value)
 }
 
 export const ProductPage = () => {
-  const { id = '' } = useParams()
+  const { productRef = '' } = useParams()
   const navigate = useNavigate()
   const dispatch = useAppDispatch()
 
@@ -38,35 +45,86 @@ export const ProductPage = () => {
   const favoriteItems = useAppSelector((state) => state.favorites.items)
   const favoriteMutationStatus = useAppSelector((state) => state.favorites.mutationStatus)
   const cartMutationStatus = useAppSelector((state) => state.cart.mutationStatus)
-  const recommendations = useAppSelector((state) => state.recommendations.items)
+  const places = useAppSelector((state) => state.places.items)
+  const placesStatus = useAppSelector((state) => state.places.status)
 
   const [selectedImages, setSelectedImages] = useState<Record<string, string>>({})
   const [quantities, setQuantities] = useState<Record<string, number>>({})
+  const [relatedItems, setRelatedItems] = useState<Product[]>([])
+  const [relatedStatus, setRelatedStatus] = useState<'idle' | 'loading' | 'succeeded' | 'failed'>('idle')
 
   useEffect(() => {
-    if (!id) {
+    if (!productRef) {
       return
     }
-    dispatch(fetchProductByIdThunk(id))
-  }, [dispatch, id])
+    dispatch(fetchProductThunk(productRef))
+  }, [dispatch, productRef])
 
   useEffect(() => {
-    if (auth.isAuthenticated) {
-      dispatch(fetchRecommendationsThunk(8))
+    if (!auth.isAuthenticated || placesStatus !== 'idle') {
+      return
     }
-  }, [auth.isAuthenticated, dispatch])
+    dispatch(fetchPlacesThunk())
+  }, [auth.isAuthenticated, dispatch, placesStatus])
+
+  useEffect(() => {
+    let cancelled = false
+    const loadRelatedItems = async () => {
+      if (!product?.categoryId) {
+        if (!cancelled) {
+          setRelatedItems([])
+          setRelatedStatus('idle')
+        }
+        return
+      }
+
+      setRelatedStatus('loading')
+
+      try {
+        const response = await productService.getProducts({
+          page: 1,
+          limit: 8,
+          category_id: product.categoryId,
+        })
+
+        if (cancelled) {
+          return
+        }
+
+        setRelatedItems(response.items.filter((item) => item.id !== product.id).slice(0, 6))
+        setRelatedStatus('succeeded')
+      } catch {
+        if (cancelled) {
+          return
+        }
+
+        setRelatedItems([])
+        setRelatedStatus('failed')
+      }
+    }
+
+    void loadRelatedItems()
+
+    return () => {
+      cancelled = true
+    }
+  }, [product?.categoryId, product?.id])
 
   const isFavorite = useMemo(
-    () => favoriteItems.some((item) => item.id === id),
-    [favoriteItems, id],
+    () => (product ? favoriteItems.some((item) => item.id === product.id) : false),
+    [favoriteItems, product],
   )
 
-  const gallery = product?.images.length ? product.images : [FALLBACK_IMAGE]
+  const gallery = product?.images.length ? product.images : [product?.imageUrl ?? FALLBACK_IMAGE]
   const selectedImage = product ? selectedImages[product.id] ?? '' : ''
   const activeImage = selectedImage && gallery.includes(selectedImage) ? selectedImage : gallery[0]
   const quantity = product ? quantities[product.id] ?? 1 : 1
   const safeQuantity = Math.min(quantity, Math.max(product?.stock || 1, 1))
   const specEntries = Object.entries(product?.specs ?? {})
+  const oldPrice = product ? Math.round(product.price * 1.14) : 0
+  const savings = product ? oldPrice - product.price : 0
+  const isAvailable = Boolean(product?.stock && product.stock > 0)
+  const deliveryPlace = places[0]
 
   const handleToggleFavorite = async () => {
     if (!product) {
@@ -80,9 +138,10 @@ export const ProductPage = () => {
 
     if (isFavorite) {
       await dispatch(removeFavoriteThunk(product.id))
-    } else {
-      await dispatch(addFavoriteThunk(product.id))
+      return
     }
+
+    await dispatch(addFavoriteThunk(product.id))
   }
 
   const handleAddToCart = async () => {
@@ -100,7 +159,7 @@ export const ProductPage = () => {
   }
 
   if (detailStatus === 'loading') {
-    return <AppLoader label="Loading product..." />
+    return <AppLoader label="Загружаем карточку товара..." />
   }
 
   if (productError) {
@@ -108,90 +167,134 @@ export const ProductPage = () => {
   }
 
   if (!product) {
-    return <ErrorMessage message="Product not found" />
+    return <ErrorMessage message="Товар не найден" />
   }
 
   return (
     <div className={styles.page}>
-      <section className={styles.product}>
-        <div className={styles.gallery}>
-          <div className={styles.mainImageWrapper}>
-            <img src={activeImage} alt={product.title} className={styles.mainImage} />
-          </div>
-          <div className={styles.thumbs}>
-            {gallery.map((image, index) => (
-              <button
-                type="button"
-                key={`${image}-${index}`}
-                className={image === activeImage ? styles.thumbActive : styles.thumb}
-                onClick={() =>
-                  setSelectedImages((current) => ({
-                    ...current,
-                    [product.id]: image,
-                  }))
-                }
-              >
-                <img src={image} alt={`${product.title} view ${index + 1}`} />
-              </button>
-            ))}
+      <nav className={styles.breadcrumbs} aria-label="Хлебные крошки">
+        <Link to="/">Главная</Link>
+        <span>/</span>
+        <Link to={product.categoryId ? `/?category_id=${product.categoryId}` : '/'}>{product.categoryName ?? 'Каталог'}</Link>
+        <span>/</span>
+        <span>{product.title}</span>
+      </nav>
+
+      <section className={styles.layout}>
+        <div className={`${styles.galleryPanel} page-card`}>
+          <div className={styles.galleryRail}>
+            <div className={styles.thumbList}>
+              {gallery.map((image, index) => (
+                <button
+                  type="button"
+                  key={`${image}-${index}`}
+                  className={image === activeImage ? styles.thumbActive : styles.thumb}
+                  onClick={() =>
+                    setSelectedImages((current) => ({
+                      ...current,
+                      [product.id]: image,
+                    }))
+                  }
+                >
+                  <img src={image} alt={`${product.title} ${index + 1}`} />
+                </button>
+              ))}
+            </div>
+
+            <div className={styles.mainStage}>
+              <div className={styles.visualBadges}>
+                {product.categoryName ? <span className="badge-pill">{product.categoryName}</span> : null}
+                {savings > 0 ? <span className={`${styles.discountBadge} badge-pill`}>Экономия {formatCurrency(savings, product.currency)}</span> : null}
+              </div>
+              <img src={activeImage} alt={product.title} className={styles.mainImage} />
+            </div>
           </div>
         </div>
 
-        <div className={styles.info}>
-          <div className={styles.header}>
+        <div className={styles.infoColumn}>
+          <section className={`${styles.infoPanel} page-card`}>
             <div className={styles.badges}>
-              {product.categoryName ? <span className={styles.badge}>{product.categoryName}</span> : null}
               {product.brand ? <span className={styles.badgeAlt}>{product.brand}</span> : null}
+              <span className={styles.badge}>Артикул {product.sku || product.id.slice(0, 8)}</span>
+              {product.unit ? <span className={styles.badge}>Продажа по {product.unit}</span> : null}
             </div>
+
             <h1 className={styles.title}>{product.title}</h1>
-            <p className={styles.subtitle}>
-              SKU: {product.sku || product.id.slice(0, 8)}
-              {product.unit ? ` | Sold per ${product.unit}` : ''}
-            </p>
-          </div>
 
-          <div className={styles.priceBlock}>
-            <p className={styles.price}>{formatCurrency(product.price, product.currency)}</p>
-            {product.unit ? <span className={styles.unit}>per {product.unit}</span> : null}
-          </div>
-
-          <p className={styles.description}>{product.description || 'No description provided for this product yet.'}</p>
-
-          <div className={`${styles.stock} ${product.stock && product.stock > 0 ? styles.inStock : styles.outOfStock}`}>
-            <span>{product.stock && product.stock > 0 ? `In stock: ${product.stock}` : 'Out of stock'}</span>
-          </div>
-
-          <div className={styles.metaGrid}>
-            {product.brand ? (
-              <div className={styles.metaCard}>
-                <span>Brand</span>
-                <strong>{product.brand}</strong>
-              </div>
-            ) : null}
-            {product.unit ? (
-              <div className={styles.metaCard}>
-                <span>Unit</span>
-                <strong>{product.unit}</strong>
-              </div>
-            ) : null}
-            <div className={styles.metaCard}>
-              <span>SKU</span>
-              <strong>{product.sku || product.id.slice(0, 8)}</strong>
+            <div className={styles.metaRow}>
+              <span>Рейтинг {product.rating ? product.rating.toFixed(1) : '4.8'} / 5</span>
+              <span>{product.categoryName ?? 'Категория каталога'}</span>
+              <span>{isAvailable ? `В наличии: ${product.stock}` : 'Под заказ'}</span>
             </div>
-            {product.categoryName ? (
-              <div className={styles.metaCard}>
-                <span>Category</span>
-                <strong>{product.categoryName}</strong>
+
+            <div className={styles.priceRow}>
+              <strong className={styles.currentPrice}>{formatCurrency(product.price, product.currency)}</strong>
+              {savings > 0 ? <span className={styles.oldPrice}>{formatCurrency(oldPrice, product.currency)}</span> : null}
+              {product.unit ? <span className={styles.unit}>за {product.unit}</span> : null}
+            </div>
+
+            <div className={isAvailable ? styles.stockChipActive : styles.stockChip}>
+              {isAvailable ? 'Можно оформить доставку или самовывоз' : 'Сейчас недоступен для быстрой покупки'}
+            </div>
+
+            <p className={styles.description}>
+              {product.description || 'Описание пока не добавлено. Откройте характеристики и детали поставки ниже.'}
+            </p>
+
+            <div className={styles.statsGrid}>
+              <article className={styles.statCard}>
+                <span>Бренд</span>
+                <strong>{product.brand || 'Marketplace Collection'}</strong>
+              </article>
+              <article className={styles.statCard}>
+                <span>Категория</span>
+                <strong>{product.categoryName || 'Каталог'}</strong>
+              </article>
+              <article className={styles.statCard}>
+                <span>SKU</span>
+                <strong>{product.sku || product.id.slice(0, 8)}</strong>
+              </article>
+              <article className={styles.statCard}>
+                <span>Формат продажи</span>
+                <strong>{product.unit || 'шт.'}</strong>
+              </article>
+            </div>
+          </section>
+
+          <section className={`${styles.sectionCard} page-card`}>
+            <div className={styles.sectionHeader}>
+              <div>
+                <span className="badge-pill">Доставка</span>
+                <h2>Условия получения</h2>
               </div>
-            ) : null}
-          </div>
+            </div>
+            <div className={styles.deliveryGrid}>
+              <article className={styles.deliveryCard}>
+                <strong>Курьером или в пункт выдачи</strong>
+                <p>
+                  {deliveryPlace
+                    ? `${deliveryPlace.title}: ${deliveryPlace.addressText}`
+                    : 'Выберите адрес в профиле, чтобы увидеть персональный сценарий доставки.'}
+                </p>
+              </article>
+              <article className={styles.deliveryCard}>
+                <strong>Оплата и оформление</strong>
+                <p>Все действия идут через ваш текущий backend checkout без изменения API-контрактов.</p>
+              </article>
+            </div>
+          </section>
 
           {specEntries.length > 0 ? (
-            <section className={styles.specs}>
-              <h2>Specifications</h2>
+            <section className={`${styles.sectionCard} page-card`}>
+              <div className={styles.sectionHeader}>
+                <div>
+                  <span className="badge-pill">Характеристики</span>
+                  <h2>Что важно знать перед заказом</h2>
+                </div>
+              </div>
               <dl className={styles.specList}>
                 {specEntries.map(([key, value]) => (
-                  <div key={key}>
+                  <div key={key} className={styles.specRow}>
                     <dt>{formatSpecLabel(key)}</dt>
                     <dd>{formatSpecValue(value as string | number | boolean | null)}</dd>
                   </div>
@@ -199,9 +302,17 @@ export const ProductPage = () => {
               </dl>
             </section>
           ) : null}
+        </div>
 
-          <div className={styles.quantity}>
-            <span className={styles.quantityLabel}>Quantity</span>
+        <aside className={`${styles.purchasePanel} summary-card`}>
+          <div className={styles.purchaseTop}>
+            <span className="badge-pill">К покупке</span>
+            <strong className={styles.sidebarPrice}>{formatCurrency(product.price, product.currency)}</strong>
+            {savings > 0 ? <span className={styles.sidebarOldPrice}>{formatCurrency(oldPrice, product.currency)}</span> : null}
+          </div>
+
+          <div className={styles.quantityCard}>
+            <span>Количество</span>
             <div className={styles.quantityControls}>
               <button
                 type="button"
@@ -231,50 +342,59 @@ export const ProductPage = () => {
             </div>
           </div>
 
-          <div className={styles.actionGroup}>
-            <button
-              type="button"
-              className={`${styles.cartButton} ${!product.stock ? styles.cartButtonDisabled : ''}`}
-              onClick={handleAddToCart}
-              disabled={!product.stock || cartMutationStatus === 'loading'}
-            >
-              {cartMutationStatus === 'loading' ? 'Adding...' : 'Add to cart'}
-            </button>
+          <button
+            type="button"
+            className="action-primary"
+            onClick={handleAddToCart}
+            disabled={!product.stock || cartMutationStatus === 'loading'}
+          >
+            {cartMutationStatus === 'loading' ? 'Добавляем...' : 'Добавить в корзину'}
+          </button>
 
-            <button
-              type="button"
-              className={styles.favoriteButton}
-              onClick={handleToggleFavorite}
-              disabled={favoriteMutationStatus === 'loading'}
-            >
-              {isFavorite ? 'Remove from favorites' : 'Add to favorites'}
-            </button>
+          <button
+            type="button"
+            className="action-secondary"
+            onClick={handleToggleFavorite}
+            disabled={favoriteMutationStatus === 'loading'}
+          >
+            {isFavorite ? 'Убрать из избранного' : 'Сохранить в избранное'}
+          </button>
+
+          <div className={styles.purchaseMeta}>
+            <div>
+              <span>Адрес</span>
+              <strong>{deliveryPlace?.title || 'Гостевой режим'}</strong>
+            </div>
+            <div>
+              <span>Получение</span>
+              <strong>{isAvailable ? 'Зависит от адреса' : 'После пополнения'}</strong>
+            </div>
+            <div>
+              <span>Статус</span>
+              <strong>{isAvailable ? 'Готов к оформлению' : 'Требуется ожидание'}</strong>
+            </div>
           </div>
-        </div>
+        </aside>
       </section>
 
-      {auth.isAuthenticated && recommendations.length > 0 ? (
-        <section className={styles.recommendations}>
-          <div className={styles.recommendationsHeader}>
-            <h2>Recommended for you</h2>
-            <p>Products from related categories and your recent activity.</p>
+      {relatedItems.length > 0 ? (
+        <section className={styles.recommendationsSection}>
+          <div className={styles.sectionHeader}>
+            <div>
+              <span className="badge-pill">Похожие товары</span>
+              <h2>Часто смотрят вместе с этой карточкой</h2>
+              <p>Подборка построена по текущей категории каталога.</p>
+            </div>
           </div>
-          <div className={styles.recommendationList}>
-            {recommendations
-              .filter((item) => item.id !== product.id)
-              .slice(0, 6)
-              .map((item) => (
-                <article key={item.id} className={styles.recommendationCard}>
-                  <img src={item.imageUrl ?? item.images[0] ?? FALLBACK_IMAGE} alt={item.title} />
-                  <div>
-                    <h3>{item.title}</h3>
-                    <p>{item.brand || item.categoryName || 'Catalog item'}</p>
-                    <strong>{formatCurrency(item.price, item.currency)}</strong>
-                  </div>
-                  <Link to={`/products/${item.id}`}>Open</Link>
-                </article>
-              ))}
+          <div className={styles.recommendationsGrid}>
+            {relatedItems.map((item) => (
+              <ProductCard key={item.id} product={item} />
+            ))}
           </div>
+        </section>
+      ) : relatedStatus === 'loading' ? (
+        <section className={`${styles.recommendationsSection} page-card`}>
+          <AppLoader label="Подбираем похожие товары..." />
         </section>
       ) : null}
     </div>

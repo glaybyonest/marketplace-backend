@@ -63,6 +63,7 @@ func New(cfg config.Config, logger *slog.Logger) (*Application, error) {
 	jwtManager := security.NewJWTManager(cfg.JWTSecret, cfg.AccessTokenTTL)
 	passwordManager := security.NewPasswordManager()
 	logMailer := mailer.NewLogSender(logger)
+	logSMSSender := mailer.NewLogSMSSender(logger)
 	queueMailer := mailer.NewQueueSender(emailJobRepo, cfg.EmailMaxAttempts)
 	metrics := observability.NewMetrics(db)
 	auditLogger := observability.NewAuditLogger(logger, metrics, auditLogRepo)
@@ -89,6 +90,7 @@ func New(cfg config.Config, logger *slog.Logger) (*Application, error) {
 		jwtManager,
 		passwordManager,
 		queueMailer,
+		logSMSSender,
 		auditLogger,
 		cfg.AppBaseURL,
 		cfg.MailFrom,
@@ -96,9 +98,11 @@ func New(cfg config.Config, logger *slog.Logger) (*Application, error) {
 		cfg.RefreshTokenTTL,
 		cfg.EmailVerifyTTL,
 		cfg.PasswordResetTTL,
+		cfg.LoginCodeTTL,
 		cfg.LoginFailureWindow,
 		cfg.LoginMaxAttempts,
 		cfg.LoginLockoutDuration,
+		cfg.Env != "production",
 	)
 	adminService := usecase.NewAdminService(categoryRepo, productRepo, auditLogger)
 	catalogService := usecase.NewCatalogService(categoryRepo, productRepo, eventRepo)

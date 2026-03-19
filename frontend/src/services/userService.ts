@@ -6,6 +6,7 @@ import { normalizeUser } from '@/utils/normalize'
 interface UpdateProfilePayload {
   fullName?: string
   name?: string
+  phone?: string
 }
 
 export const userService = {
@@ -18,8 +19,8 @@ export const userService = {
     const fullName = payload.fullName ?? payload.name
     const response = await apiClient.patch('/v1/profile', {
       full_name: fullName,
+      phone: payload.phone,
     })
     return normalizeUser(pickData(response.data))
   },
 }
-

@@ -10,7 +10,7 @@ interface ProductGridProps {
 
 export const ProductGrid = ({ products }: ProductGridProps) => {
   if (products.length === 0) {
-    return <p className={styles.empty}>No products matched the selected filters.</p>
+    return <p className={styles.empty}>По выбранным фильтрам пока ничего не найдено.</p>
   }
 
   return (

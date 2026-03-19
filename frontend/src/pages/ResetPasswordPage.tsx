@@ -15,15 +15,15 @@ const hasLatinLetterAndDigit = (value: string) => /[A-Za-z]/.test(value) && /\d/
 
 const validatePassword = (password: string, confirmPassword: string): string | null => {
   if (password.length < PASSWORD_MIN_LEN || password.length > PASSWORD_MAX_LEN) {
-    return 'Password must be between 8 and 72 characters'
+    return 'Пароль должен содержать от 8 до 72 символов'
   }
 
   if (!hasLatinLetterAndDigit(password)) {
-    return 'Password must include at least one letter and one digit'
+    return 'Пароль должен содержать хотя бы одну латинскую букву и одну цифру'
   }
 
   if (password !== confirmPassword) {
-    return 'Passwords do not match'
+    return 'Пароли не совпадают'
   }
 
   return null
@@ -45,7 +45,7 @@ export const ResetPasswordPage = () => {
     event.preventDefault()
 
     if (!token) {
-      setError('Reset token is missing from the link')
+      setError('В ссылке отсутствует токен для сброса пароля')
       return
     }
 
@@ -61,27 +61,51 @@ export const ResetPasswordPage = () => {
     try {
       await authService.confirmPasswordReset(token, password)
       setStatus('success')
-      setMessage('Your password has been updated. You can sign in with the new password now.')
+      setMessage('Пароль обновлён. Теперь можно войти с новым паролем.')
     } catch (requestError) {
       setStatus('failed')
-      setError(getErrorMessage(requestError, 'Failed to reset password'))
+      setError(getErrorMessage(requestError, 'Не удалось обновить пароль'))
     }
   }
 
   return (
     <div className={styles.page}>
+      <section className={styles.showcase}>
+        <div>
+          <span className={styles.showcaseBadge}>Новый пароль</span>
+          <h2 className={styles.showcaseTitle}>Обновите пароль и сразу возвращайтесь к заказам</h2>
+          <p className={styles.showcaseText}>
+            После успешного сброса вы входите в тот же аккаунт с теми же заказами, адресами и избранным.
+          </p>
+        </div>
+
+        <div className={styles.showcaseList}>
+          <div>
+            <strong>Защищённый токен</strong>
+            <p>Страница работает только по ссылке из письма восстановления.</p>
+          </div>
+          <div>
+            <strong>Те же backend-правила</strong>
+            <p>Ограничения на пароль и валидация остаются совместимыми с вашим сервером.</p>
+          </div>
+        </div>
+      </section>
+
       <section className={styles.card}>
-        <h1>Reset password</h1>
-        <p>Set a new password for your account using the secure reset link.</p>
+        <div className={styles.cardHeader}>
+          <span className="badge-pill">Сброс</span>
+          <h1>Задайте новый пароль</h1>
+          <p>Введите новый пароль дважды, чтобы обновить доступ к аккаунту.</p>
+        </div>
 
         {message ? <div className={styles.success}>{message}</div> : null}
         {error ? <ErrorMessage message={error} /> : null}
 
-        {!token ? <div className={styles.inlineInfo}>Open this page from the link in your email.</div> : null}
+        {!token ? <div className={styles.inlineInfo}>Откройте эту страницу по ссылке из письма восстановления.</div> : null}
 
         <form className={styles.form} onSubmit={handleSubmit}>
           <label>
-            New password
+            Новый пароль
             <input
               type="password"
               value={password}
@@ -93,7 +117,7 @@ export const ResetPasswordPage = () => {
             />
           </label>
           <label>
-            Confirm password
+            Повторите пароль
             <input
               type="password"
               value={confirmPassword}
@@ -104,16 +128,16 @@ export const ResetPasswordPage = () => {
               required
             />
           </label>
-          <p className={styles.hint}>Use 8 to 72 characters with at least one letter and one digit.</p>
+          <p className={styles.hint}>Используйте от 8 до 72 символов, минимум одну латинскую букву и одну цифру.</p>
           <button type="submit" disabled={status === 'loading' || !token}>
-            {status === 'loading' ? 'Saving...' : 'Save new password'}
+            {status === 'loading' ? 'Сохраняем...' : 'Сохранить новый пароль'}
           </button>
         </form>
 
         <div className={styles.links}>
-          <Link to="/login">Back to sign in</Link>
+          <Link to="/login">Вернуться ко входу</Link>
           <span>
-            Need a new reset link? <Link to="/forgot-password">Request again</Link>
+            Нужна новая ссылка? <Link to="/forgot-password">Запросить повторно</Link>
           </span>
         </div>
       </section>

@@ -21,6 +21,10 @@ import (
 type AuthService interface {
 	Register(ctx context.Context, input usecase.RegisterInput) (domain.AuthResult, error)
 	Login(ctx context.Context, input usecase.LoginInput) (domain.AuthResult, error)
+	RequestEmailLoginCode(ctx context.Context, input usecase.EmailCodeRequestInput) (domain.AuthCodeDispatch, error)
+	LoginWithEmailCode(ctx context.Context, input usecase.EmailCodeLoginInput) (domain.AuthResult, error)
+	RequestPhoneLoginCode(ctx context.Context, input usecase.PhoneCodeRequestInput) (domain.AuthCodeDispatch, error)
+	LoginWithPhoneCode(ctx context.Context, input usecase.PhoneCodeLoginInput) (domain.AuthResult, error)
 	Refresh(ctx context.Context, input usecase.RefreshInput) (domain.TokenPair, error)
 	Logout(ctx context.Context, input usecase.LogoutInput) error
 	LogoutAll(ctx context.Context, userID uuid.UUID) error
@@ -56,6 +60,7 @@ func (h *AuthHandler) Register(w http.ResponseWriter, r *http.Request) {
 
 	result, err := h.service.Register(r.Context(), usecase.RegisterInput{
 		Email:     req.Email,
+		Phone:     req.Phone,
 		Password:  req.Password,
 		FullName:  req.FullName,
 		UserAgent: r.UserAgent(),
@@ -79,6 +84,86 @@ func (h *AuthHandler) Login(w http.ResponseWriter, r *http.Request) {
 	result, err := h.service.Login(r.Context(), usecase.LoginInput{
 		Email:     req.Email,
 		Password:  req.Password,
+		UserAgent: r.UserAgent(),
+		IP:        getClientIP(r),
+	})
+	if err != nil {
+		writeDomainError(w, r, err)
+		return
+	}
+
+	h.writeAuthCookies(w, result.Tokens)
+	response.JSON(w, http.StatusOK, h.authResultResponse(result))
+}
+
+func (h *AuthHandler) RequestEmailLoginCode(w http.ResponseWriter, r *http.Request) {
+	var req dto.EmailCodeRequest
+	if err := decodeAndValidate(r, &req, h.validate); err != nil {
+		writeDomainError(w, r, err)
+		return
+	}
+
+	result, err := h.service.RequestEmailLoginCode(r.Context(), usecase.EmailCodeRequestInput{
+		Email: req.Email,
+	})
+	if err != nil {
+		writeDomainError(w, r, err)
+		return
+	}
+
+	response.JSON(w, http.StatusOK, result)
+}
+
+func (h *AuthHandler) LoginWithEmailCode(w http.ResponseWriter, r *http.Request) {
+	var req dto.EmailCodeConfirmRequest
+	if err := decodeAndValidate(r, &req, h.validate); err != nil {
+		writeDomainError(w, r, err)
+		return
+	}
+
+	result, err := h.service.LoginWithEmailCode(r.Context(), usecase.EmailCodeLoginInput{
+		Email:     req.Email,
+		Code:      req.Code,
+		UserAgent: r.UserAgent(),
+		IP:        getClientIP(r),
+	})
+	if err != nil {
+		writeDomainError(w, r, err)
+		return
+	}
+
+	h.writeAuthCookies(w, result.Tokens)
+	response.JSON(w, http.StatusOK, h.authResultResponse(result))
+}
+
+func (h *AuthHandler) RequestPhoneLoginCode(w http.ResponseWriter, r *http.Request) {
+	var req dto.PhoneCodeRequest
+	if err := decodeAndValidate(r, &req, h.validate); err != nil {
+		writeDomainError(w, r, err)
+		return
+	}
+
+	result, err := h.service.RequestPhoneLoginCode(r.Context(), usecase.PhoneCodeRequestInput{
+		Phone: req.Phone,
+	})
+	if err != nil {
+		writeDomainError(w, r, err)
+		return
+	}
+
+	response.JSON(w, http.StatusOK, result)
+}
+
+func (h *AuthHandler) LoginWithPhoneCode(w http.ResponseWriter, r *http.Request) {
+	var req dto.PhoneCodeConfirmRequest
+	if err := decodeAndValidate(r, &req, h.validate); err != nil {
+		writeDomainError(w, r, err)
+		return
+	}
+
+	result, err := h.service.LoginWithPhoneCode(r.Context(), usecase.PhoneCodeLoginInput{
+		Phone:     req.Phone,
+		Code:      req.Code,
 		UserAgent: r.UserAgent(),
 		IP:        getClientIP(r),
 	})

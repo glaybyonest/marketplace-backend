@@ -1,112 +1,198 @@
 .page {
   display: grid;
-  gap: 1rem;
+  gap: 20px;
 }
 
-.header h1,
-.places h2,
-.summary h2,
-.empty h2 {
-  margin: 0;
+.header h1 {
+  margin: 10px 0 0;
 }
 
-.header p,
-.empty p {
-  margin: 0.25rem 0 0;
+.header p {
+  margin: 10px 0 0;
   color: var(--color-text-secondary);
 }
 
 .layout {
   display: grid;
-  grid-template-columns: minmax(0, 1.4fr) minmax(300px, 0.9fr);
-  gap: 1rem;
+  grid-template-columns: minmax(0, 1.45fr) minmax(320px, 0.75fr);
+  gap: 18px;
+  align-items: start;
 }
 
-.places,
-.summary,
-.empty {
-  background: #fff;
-  border: 1px solid var(--color-border);
-  border-radius: 1rem;
-  padding: 1rem;
+.mainColumn {
+  display: grid;
+  gap: 18px;
+}
+
+.sectionCard {
+  display: grid;
+  gap: 18px;
+}
+
+.sectionHeading {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  align-items: end;
+}
+
+.sectionHeading h2 {
+  margin: 10px 0 0;
 }
 
 .placeList {
   display: grid;
-  gap: 0.75rem;
-  margin-top: 1rem;
+  gap: 12px;
 }
 
 .placeCard {
   display: grid;
-  grid-template-columns: auto 1fr;
-  gap: 0.75rem;
-  align-items: start;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 14px;
+  padding: 18px;
+  border-radius: 22px;
   border: 1px solid var(--color-border);
-  border-radius: 0.85rem;
-  padding: 0.9rem;
+  background: linear-gradient(180deg, #fff, #fafcff);
   cursor: pointer;
 }
 
+.placeCard input {
+  width: 18px;
+  height: 18px;
+  margin-top: 4px;
+}
+
 .placeCard p {
-  margin: 0.35rem 0 0;
+  margin: 6px 0 0;
   color: var(--color-text-secondary);
 }
 
 .placeCardActive {
-  border-color: var(--color-primary);
-  background: var(--color-primary-light);
+  border-color: rgb(0 91 255 / 0.28);
+  box-shadow: 0 0 0 3px rgb(0 91 255 / 0.1);
+  background: linear-gradient(180deg, #f9fbff, #eef5ff);
+}
+
+.orderList {
+  display: grid;
+  gap: 12px;
+  padding: 0;
+  margin: 0;
+  list-style: none;
+}
+
+.orderItem {
+  display: grid;
+  grid-template-columns: 78px minmax(0, 1fr) auto auto;
+  gap: 14px;
+  align-items: center;
+  padding: 14px;
+  border-radius: 22px;
+  background: #fbfcff;
+  border: 1px solid var(--color-border);
+}
+
+.orderItem img {
+  width: 78px;
+  height: 78px;
+  object-fit: cover;
+  border-radius: 16px;
+  background: #f3f5f8;
+}
+
+.orderCopy {
+  display: grid;
+  gap: 4px;
+}
+
+.orderCopy span,
+.orderQty {
+  color: var(--color-text-secondary);
 }
 
 .summary {
+  position: sticky;
+  top: 126px;
   display: grid;
-  gap: 1rem;
-  align-content: start;
+  gap: 16px;
 }
 
-.summaryList {
-  list-style: none;
-  padding: 0;
+.summaryTop {
+  display: grid;
+  gap: 6px;
+}
+
+.summaryTop h2 {
   margin: 0;
-  display: grid;
-  gap: 0.65rem;
 }
 
-.summaryList li,
-.summary dl div {
+.deliveryInfo {
+  display: grid;
+  gap: 6px;
+  padding: 16px;
+  border-radius: 20px;
+  background: #f8fbff;
+  border: 1px solid var(--color-border);
+}
+
+.deliveryInfo p {
+  margin: 0;
+  color: var(--color-text-secondary);
+}
+
+.summaryRows {
+  display: grid;
+  gap: 12px;
+  margin: 0;
+}
+
+.summaryRows div {
   display: flex;
   justify-content: space-between;
-  gap: 1rem;
+  gap: 12px;
 }
 
-.summary dl {
-  display: grid;
-  gap: 0.75rem;
+.summaryRows dt,
+.summaryRows dd {
   margin: 0;
 }
 
-.primaryButton,
-.primaryLink {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  text-decoration: none;
-  border: none;
-  border-radius: 0.8rem;
-  padding: 0.85rem 1rem;
-  background: var(--color-primary);
-  color: #fff;
-  font-weight: 700;
-  cursor: pointer;
+.summaryRows dt {
+  color: var(--color-text-secondary);
+}
+
+.summaryRows dd {
+  text-align: right;
+}
+
+.helper {
+  margin: 0;
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-sm);
 }
 
 .empty {
   display: grid;
-  gap: 0.75rem;
+  gap: 10px;
 }
 
-@media (max-width: 900px) {
+@media (max-width: 1080px) {
   .layout {
+    grid-template-columns: 1fr;
+  }
+
+  .summary {
+    position: static;
+  }
+}
+
+@media (max-width: 768px) {
+  .sectionHeading {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .orderItem {
     grid-template-columns: 1fr;
   }
 }

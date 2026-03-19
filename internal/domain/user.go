@@ -17,6 +17,7 @@ const (
 type User struct {
 	ID                  uuid.UUID  `json:"id"`
 	Email               string     `json:"email"`
+	Phone               string     `json:"phone,omitempty"`
 	PasswordHash        string     `json:"-"`
 	FullName            string     `json:"full_name,omitempty"`
 	Role                UserRole   `json:"role"`
@@ -60,11 +61,20 @@ type AuthResult struct {
 	Message                   string     `json:"message,omitempty"`
 }
 
+type AuthCodeChannel string
+
+const (
+	AuthCodeChannelEmail AuthCodeChannel = "email"
+	AuthCodeChannelPhone AuthCodeChannel = "phone"
+)
+
 type AuthActionPurpose string
 
 const (
 	AuthActionVerifyEmail   AuthActionPurpose = "verify_email"
 	AuthActionResetPassword AuthActionPurpose = "reset_password"
+	AuthActionLoginEmail    AuthActionPurpose = "login_email_code"
+	AuthActionLoginPhone    AuthActionPurpose = "login_phone_code"
 )
 
 type AuthActionToken struct {
@@ -75,4 +85,13 @@ type AuthActionToken struct {
 	ExpiresAt  time.Time         `json:"expires_at"`
 	CreatedAt  time.Time         `json:"created_at"`
 	ConsumedAt *time.Time        `json:"consumed_at,omitempty"`
+}
+
+type AuthCodeDispatch struct {
+	Accepted          bool            `json:"accepted"`
+	Channel           AuthCodeChannel `json:"channel"`
+	MaskedDestination string          `json:"masked_destination,omitempty"`
+	ExpiresIn         int64           `json:"expires_in,omitempty"`
+	DevCode           string          `json:"dev_code,omitempty"`
+	Message           string          `json:"message,omitempty"`
 }

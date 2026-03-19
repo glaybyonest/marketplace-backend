@@ -1,7 +1,7 @@
 import { createAsyncThunk, createSlice } from '@reduxjs/toolkit'
 
 import { ordersService } from '@/services/ordersService'
-import { logoutThunk } from '@/store/slices/authSlice'
+import { forceLogout, logoutThunk } from '@/store/slices/authSlice'
 import type { Order } from '@/types/domain'
 import { getErrorMessage } from '@/utils/error'
 
@@ -121,6 +121,7 @@ const ordersSlice = createSlice({
         state.detailStatus = 'failed'
         state.error = action.payload as string
       })
+      .addCase(forceLogout, () => initialState)
       .addCase(logoutThunk.fulfilled, () => initialState)
       .addCase(logoutThunk.rejected, () => initialState)
   },

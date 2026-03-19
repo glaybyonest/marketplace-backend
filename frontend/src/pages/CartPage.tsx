@@ -1,4 +1,4 @@
-import { useEffect } from 'react'
+import { useEffect, useMemo } from 'react'
 import { Link } from 'react-router-dom'
 
 import { AppLoader } from '@/components/common/AppLoader'
@@ -11,6 +11,7 @@ import {
   updateCartItemThunk,
 } from '@/store/slices/cartSlice'
 import { formatCurrency } from '@/utils/format'
+import { getProductPath } from '@/utils/productRef'
 
 import styles from '@/pages/CartPage.module.scss'
 
@@ -23,6 +24,17 @@ export const CartPage = () => {
   useEffect(() => {
     dispatch(fetchCartThunk())
   }, [dispatch])
+
+  const regularTotal = useMemo(
+    () =>
+      items.reduce((sum, item) => {
+        const oldPrice = Math.round(item.price * 1.12)
+        return sum + oldPrice * item.quantity
+      }, 0),
+    [items],
+  )
+
+  const benefit = Math.max(0, regularTotal - total)
 
   const handleDecrease = (productId: string, quantity: number) => {
     if (quantity <= 1) {
@@ -43,25 +55,31 @@ export const CartPage = () => {
     <div className={styles.page}>
       <header className={styles.header}>
         <div>
-          <h1>Cart</h1>
-          <p>Review items before checkout.</p>
+          <span className="badge-pill">Корзина</span>
+          <h1>Проверьте состав заказа</h1>
+          <p>Товары уже синхронизированы с вашим backend. Здесь остаётся уточнить количество и перейти к оформлению.</p>
         </div>
-        {items.length > 0 ? (
-          <button type="button" className={styles.secondary} onClick={() => dispatch(clearCartThunk())}>
-            Clear cart
-          </button>
-        ) : null}
+        <div className={styles.headerActions}>
+          <Link to="/" className="action-secondary">
+            Продолжить покупки
+          </Link>
+          {items.length > 0 ? (
+            <button type="button" className="action-ghost" onClick={() => dispatch(clearCartThunk())}>
+              Очистить корзину
+            </button>
+          ) : null}
+        </div>
       </header>
 
-      {status === 'loading' ? <AppLoader label="Loading cart..." /> : null}
+      {status === 'loading' ? <AppLoader label="Загружаем корзину..." /> : null}
       {error ? <ErrorMessage message={error} /> : null}
 
       {items.length === 0 ? (
-        <section className={styles.empty}>
-          <h2>Your cart is empty</h2>
-          <p>Add products from the catalog to start checkout.</p>
-          <Link to="/" className={styles.primaryLink}>
-            Browse catalog
+        <section className={`${styles.empty} empty-state`}>
+          <h2>Корзина пока пустая</h2>
+          <p>Добавьте товары из каталога, чтобы перейти к оформлению заказа и выбору адреса.</p>
+          <Link to="/" className="action-primary">
+            Перейти в каталог
           </Link>
         </section>
       ) : (
@@ -69,73 +87,105 @@ export const CartPage = () => {
           <section className={styles.list}>
             {items.map((item) => (
               <article key={item.id} className={styles.item}>
-                <img
-                  src={item.imageUrl ?? FALLBACK_IMAGE}
-                  alt={item.title}
-                  className={styles.image}
-                />
+                <Link to={getProductPath(item)} className={styles.imageWrap}>
+                  <img src={item.imageUrl ?? FALLBACK_IMAGE} alt={item.title} className={styles.image} />
+                </Link>
 
                 <div className={styles.itemMain}>
-                  <Link to={`/products/${item.productId}`} className={styles.itemTitle}>
-                    {item.title}
-                  </Link>
-                  <p className={styles.meta}>
-                    {item.sku ? `SKU: ${item.sku}` : 'Cart item'}
-                    {item.stock !== undefined ? ` | Stock: ${item.stock}` : ''}
-                  </p>
-                  <p className={styles.price}>{formatCurrency(item.price, item.currency ?? currency)}</p>
-                </div>
-
-                <div className={styles.controls}>
-                  <div className={styles.quantity}>
+                  <div className={styles.itemTop}>
+                    <div>
+                      <Link to={getProductPath(item)} className={styles.itemTitle}>
+                        {item.title}
+                      </Link>
+                      <p className={styles.meta}>
+                        {item.sku ? `Артикул ${item.sku}` : 'Товар из каталога'}
+                        {item.stock !== undefined ? ` • Доступно ${item.stock}` : ''}
+                      </p>
+                    </div>
                     <button
                       type="button"
-                      onClick={() => handleDecrease(item.productId, item.quantity)}
-                      disabled={mutationStatus === 'loading'}
-                    >
-                      -
-                    </button>
-                    <span>{item.quantity}</span>
-                    <button
-                      type="button"
-                      onClick={() => handleIncrease(item.productId, item.quantity, item.stock)}
-                      disabled={mutationStatus === 'loading' || (item.stock !== undefined && item.quantity >= item.stock)}
-                    >
-                      +
-                    </button>
-                  </div>
-
-                  <div className={styles.itemActions}>
-                    <strong>{formatCurrency(item.lineTotal, item.currency ?? currency)}</strong>
-                    <button
-                      type="button"
-                      className={styles.textButton}
+                      className={styles.removeButton}
                       onClick={() => dispatch(removeCartItemThunk(item.productId))}
                       disabled={mutationStatus === 'loading'}
                     >
-                      Remove
+                      Удалить
                     </button>
+                  </div>
+
+                  <div className={styles.itemBottom}>
+                    <div className={styles.priceBlock}>
+                      <span className={styles.oldPrice}>{formatCurrency(Math.round(item.price * 1.12), item.currency ?? currency)}</span>
+                      <strong>{formatCurrency(item.price, item.currency ?? currency)}</strong>
+                    </div>
+
+                    <div className={styles.quantity}>
+                      <button
+                        type="button"
+                        onClick={() => handleDecrease(item.productId, item.quantity)}
+                        disabled={mutationStatus === 'loading'}
+                      >
+                        -
+                      </button>
+                      <span>{item.quantity}</span>
+                      <button
+                        type="button"
+                        onClick={() => handleIncrease(item.productId, item.quantity, item.stock)}
+                        disabled={mutationStatus === 'loading' || (item.stock !== undefined && item.quantity >= item.stock)}
+                      >
+                        +
+                      </button>
+                    </div>
+
+                    <div className={styles.lineTotal}>
+                      <span>Итого</span>
+                      <strong>{formatCurrency(item.lineTotal, item.currency ?? currency)}</strong>
+                    </div>
                   </div>
                 </div>
               </article>
             ))}
           </section>
 
-          <aside className={styles.summary}>
-            <h2>Summary</h2>
-            <dl>
+          <aside className={`${styles.summary} summary-card`}>
+            <div className={styles.summaryBlock}>
+              <span className="badge-pill">Ваш заказ</span>
+              <h2>{totalItems} позиций</h2>
+            </div>
+
+            <dl className={styles.summaryRows}>
               <div>
-                <dt>Items</dt>
-                <dd>{totalItems}</dd>
+                <dt>Товары</dt>
+                <dd>{formatCurrency(regularTotal, currency)}</dd>
               </div>
               <div>
-                <dt>Total</dt>
-                <dd>{formatCurrency(total, currency)}</dd>
+                <dt>Скидка витрины</dt>
+                <dd className={styles.benefit}>{formatCurrency(benefit, currency)}</dd>
+              </div>
+              <div>
+                <dt>Доставка</dt>
+                <dd>Рассчитается на следующем шаге</dd>
               </div>
             </dl>
-            <Link to="/checkout" className={styles.primaryLink}>
-              Continue to checkout
+
+            <div className={styles.totalBlock}>
+              <span>К оплате</span>
+              <strong>{formatCurrency(total, currency)}</strong>
+            </div>
+
+            <Link to="/checkout" className="action-primary">
+              Перейти к оформлению
             </Link>
+
+            <div className={styles.notes}>
+              <div>
+                <strong>Оформление без сюрпризов</strong>
+                <p>Адреса, checkout и подтверждение заказа используют текущие backend-эндпоинты.</p>
+              </div>
+              <div>
+                <strong>Изменения сохраняются сразу</strong>
+                <p>Количество и удаление товаров синхронизируются в корзине мгновенно.</p>
+              </div>
+            </div>
           </aside>
         </div>
       )}

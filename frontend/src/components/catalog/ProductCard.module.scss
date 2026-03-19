@@ -1,31 +1,92 @@
 .card {
+  position: relative;
   display: grid;
-  background: var(--color-surface);
+  gap: 14px;
+  padding: 18px;
+  border-radius: 24px;
   border: 1px solid var(--color-border);
-  border-radius: var(--radius-lg);
-  overflow: hidden;
-  transition: transform var(--transition-base), box-shadow var(--transition-base);
+  background: #fff;
+  box-shadow: var(--shadow-card);
+  transition: transform var(--transition-fast), box-shadow var(--transition-fast), border-color var(--transition-fast);
 }
 
 .card:hover {
-  transform: translateY(-4px);
+  transform: translateY(-2px);
   box-shadow: var(--shadow-hover);
+  border-color: rgb(0 91 255 / 0.18);
+}
+
+.badges {
+  position: absolute;
+  inset: 14px 14px auto;
+  z-index: 1;
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  pointer-events: none;
+}
+
+.discountBadge,
+.favoriteButton {
+  pointer-events: auto;
+}
+
+.discountBadge {
+  display: inline-flex;
+  align-items: center;
+  min-height: 30px;
+  padding: 0 12px;
+  border-radius: var(--radius-full);
+  background: #ff335f;
+  color: #fff;
+  font-size: 0.82rem;
+  font-weight: 800;
+}
+
+.favoriteButton {
+  width: 34px;
+  height: 34px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  background: rgb(255 255 255 / 0.92);
+  color: var(--color-text-muted);
+  box-shadow: 0 10px 20px rgb(0 0 0 / 0.08);
+}
+
+.favoriteButton svg {
+  width: 18px;
+  height: 18px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.8;
+}
+
+.favoriteButtonActive {
+  color: #ff335f;
 }
 
 .imageWrap {
   position: relative;
   display: block;
-  aspect-ratio: 4 / 3;
-  background: linear-gradient(135deg, #eef4ff, #f7efe7);
+  aspect-ratio: 1;
   overflow: hidden;
+  border-radius: 18px;
+  background: linear-gradient(180deg, #f9fbff, #eef3ff);
 }
 
 .skeleton {
   position: absolute;
   inset: 0;
-  background: linear-gradient(90deg, #eef1f5 0%, #dde5ee 50%, #eef1f5 100%);
+  background: linear-gradient(90deg, #eef3ff 0%, #fafcff 50%, #eef3ff 100%);
   background-size: 200% 100%;
-  animation: shimmer 1.2s linear infinite;
+  animation: shimmer 1.5s linear infinite;
+}
+
+@keyframes shimmer {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
 }
 
 .image,
@@ -33,7 +94,7 @@
   width: 100%;
   height: 100%;
   object-fit: cover;
-  transition: opacity var(--transition-base), transform var(--transition-slow);
+  transition: opacity var(--transition-fast), transform var(--transition-fast);
 }
 
 .image {
@@ -45,74 +106,70 @@
 }
 
 .card:hover .imageLoaded {
-  transform: scale(1.04);
+  transform: scale(1.03);
 }
 
 .stockBadge {
   position: absolute;
-  left: 0.8rem;
-  bottom: 0.8rem;
-  padding: 0.35rem 0.65rem;
-  border-radius: 999px;
-  font-size: 0.75rem;
-  font-weight: 700;
+  left: 12px;
+  bottom: 12px;
+  display: inline-flex;
+  align-items: center;
+  min-height: 28px;
+  padding: 0 12px;
+  border-radius: var(--radius-full);
+  font-size: 0.78rem;
+  font-weight: 800;
   backdrop-filter: blur(8px);
 }
 
 .stockBadgeActive {
-  background: rgba(232, 248, 238, 0.92);
-  color: #1d5f38;
+  background: rgb(232 247 237 / 0.94);
+  color: var(--color-success);
 }
 
 .stockBadgeEmpty {
-  background: rgba(253, 233, 233, 0.92);
-  color: #8b1e2d;
+  background: rgb(255 235 237 / 0.94);
+  color: var(--color-danger);
 }
 
 .body {
   display: grid;
-  gap: 0.8rem;
-  padding: 1rem;
+  gap: 10px;
 }
 
 .metaRow {
   display: flex;
-  flex-wrap: wrap;
-  gap: 0.5rem;
   align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
 }
 
 .category,
 .brand {
-  display: inline-flex;
-  align-items: center;
-  padding: 0.2rem 0.55rem;
-  border-radius: 999px;
-  font-size: 0.72rem;
-  font-weight: 700;
-  letter-spacing: 0.03em;
+  font-size: 0.78rem;
+  font-weight: 800;
+  letter-spacing: 0.04em;
   text-transform: uppercase;
 }
 
 .category {
-  background: #eef4ff;
-  color: #214476;
+  color: var(--color-primary);
 }
 
 .brand {
-  background: #f7efe7;
-  color: #734d22;
+  color: var(--color-text-muted);
 }
 
 .title {
   margin: 0;
+  min-height: 52px;
   font-size: 1rem;
-  line-height: 1.4;
+  line-height: 1.35;
 }
 
 .title a {
   color: var(--color-text-primary);
-  text-decoration: none;
 }
 
 .title a:hover {
@@ -121,73 +178,89 @@
 
 .description {
   margin: 0;
+  min-height: 44px;
   color: var(--color-text-secondary);
   font-size: 0.9rem;
-  line-height: 1.5;
+  line-height: 1.45;
 }
 
 .specList {
   list-style: none;
-  display: grid;
-  gap: 0.45rem;
-  padding: 0;
   margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 6px;
 }
 
 .specList li {
   display: flex;
   justify-content: space-between;
-  gap: 0.75rem;
-  font-size: 0.85rem;
+  gap: 12px;
+  font-size: 0.82rem;
   color: var(--color-text-secondary);
 }
 
 .specList strong {
   color: var(--color-text-primary);
-  text-align: right;
-}
-
-.footerRow {
-  display: flex;
-  align-items: end;
-  justify-content: space-between;
-  gap: 0.75rem;
-  margin-top: auto;
 }
 
 .priceBlock {
-  display: grid;
-  gap: 0.15rem;
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 8px 10px;
+}
+
+.oldPrice {
+  color: var(--color-text-muted);
+  font-size: 0.9rem;
+  text-decoration: line-through;
 }
 
 .price {
-  color: var(--color-primary-dark);
-  font-size: 1.25rem;
+  color: var(--color-text-primary);
+  font-size: 1.42rem;
+  font-weight: 800;
 }
 
 .unit {
   color: var(--color-text-secondary);
-  font-size: 0.82rem;
-}
-
-.cta {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  min-width: 4.5rem;
-  padding: 0.6rem 0.8rem;
-  border-radius: 0.75rem;
-  background: var(--color-primary);
-  color: #fff;
-  font-weight: 700;
   font-size: 0.85rem;
 }
 
-@keyframes shimmer {
-  0% {
-    background-position: 200% 0;
-  }
-  100% {
-    background-position: -200% 0;
-  }
+.footerRow {
+  display: flex;
+  justify-content: space-between;
+  gap: 14px;
+  align-items: center;
+}
+
+.deliveryText,
+.deliveryTextSecondary {
+  display: block;
+  font-size: 0.82rem;
+}
+
+.deliveryText {
+  color: var(--color-text-primary);
+  font-weight: 700;
+}
+
+.deliveryTextSecondary {
+  color: var(--color-text-secondary);
+}
+
+.cartButton {
+  min-width: 112px;
+  min-height: 42px;
+  padding: 0 16px;
+  border-radius: 14px;
+  background: linear-gradient(135deg, #0f7cff, #0055e6);
+  color: #fff;
+  font-weight: 800;
+}
+
+.cartButton:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
 }

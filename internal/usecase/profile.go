@@ -13,6 +13,7 @@ import (
 type ProfileUserRepository interface {
 	GetByID(ctx context.Context, id uuid.UUID) (domain.User, error)
 	UpdateFullName(ctx context.Context, id uuid.UUID, fullName *string) (domain.User, error)
+	UpdatePhone(ctx context.Context, id uuid.UUID, phone *string) (domain.User, error)
 }
 
 type ProfileAuditLogger interface {
@@ -35,12 +36,12 @@ func (s *ProfileService) Get(ctx context.Context, userID uuid.UUID) (domain.User
 	return s.users.GetByID(ctx, userID)
 }
 
-func (s *ProfileService) Update(ctx context.Context, userID uuid.UUID, fullName *string) (domain.User, error) {
+func (s *ProfileService) Update(ctx context.Context, userID uuid.UUID, fullName *string, phone *string) (domain.User, error) {
 	if userID == uuid.Nil {
 		return domain.User{}, domain.ErrUnauthorized
 	}
 
-	if fullName == nil {
+	if fullName == nil && phone == nil {
 		return s.users.GetByID(ctx, userID)
 	}
 
@@ -49,28 +50,41 @@ func (s *ProfileService) Update(ctx context.Context, userID uuid.UUID, fullName 
 		return domain.User{}, err
 	}
 
-	value := strings.TrimSpace(*fullName)
-	if len(value) > 120 {
-		return domain.User{}, domain.ErrInvalidInput
+	updatedUser := currentUser
+	if fullName != nil {
+		value := strings.TrimSpace(*fullName)
+		if len(value) > 120 {
+			return domain.User{}, domain.ErrInvalidInput
+		}
+		if value == "" {
+			updatedUser, err = s.users.UpdateFullName(ctx, userID, nil)
+			if err != nil {
+				return domain.User{}, err
+			}
+		} else {
+			updatedUser, err = s.users.UpdateFullName(ctx, userID, &value)
+			if err != nil {
+				return domain.User{}, err
+			}
+		}
 	}
-	if value == "" {
-		updatedUser, err := s.users.UpdateFullName(ctx, userID, nil)
+
+	if phone != nil {
+		value, err := normalizeOptionalPhone(*phone)
 		if err != nil {
 			return domain.User{}, err
 		}
-		s.recordAudit(ctx, userID, currentUser.FullName, updatedUser.FullName)
-		return updatedUser, nil
+		updatedUser, err = s.users.UpdatePhone(ctx, userID, value)
+		if err != nil {
+			return domain.User{}, err
+		}
 	}
 
-	updatedUser, err := s.users.UpdateFullName(ctx, userID, &value)
-	if err != nil {
-		return domain.User{}, err
-	}
-	s.recordAudit(ctx, userID, currentUser.FullName, updatedUser.FullName)
+	s.recordAudit(ctx, userID, currentUser, updatedUser)
 	return updatedUser, nil
 }
 
-func (s *ProfileService) recordAudit(ctx context.Context, userID uuid.UUID, before, after string) {
+func (s *ProfileService) recordAudit(ctx context.Context, userID uuid.UUID, before, after domain.User) {
 	if s.audit == nil {
 		return
 	}
@@ -80,8 +94,10 @@ func (s *ProfileService) recordAudit(ctx context.Context, userID uuid.UUID, befo
 		EntityType:  "user",
 		EntityID:    ptrUUID(userID),
 		Metadata: map[string]any{
-			"before_full_name": before,
-			"after_full_name":  after,
+			"before_full_name": before.FullName,
+			"after_full_name":  after.FullName,
+			"before_phone":     before.Phone,
+			"after_phone":      after.Phone,
 		},
 	})
 }

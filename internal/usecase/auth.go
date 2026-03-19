@@ -2,7 +2,9 @@ package usecase
 
 import (
 	"context"
+	"crypto/rand"
 	"fmt"
+	"math/big"
 	"net/mail"
 	"net/url"
 	"strings"
@@ -19,9 +21,11 @@ import (
 type AuthUserRepository interface {
 	Create(ctx context.Context, input CreateUserInput) (domain.User, error)
 	GetByEmail(ctx context.Context, email string) (domain.User, error)
+	GetByPhone(ctx context.Context, phone string) (domain.User, error)
 	GetByID(ctx context.Context, id uuid.UUID) (domain.User, error)
 	UpdatePasswordHash(ctx context.Context, id uuid.UUID, passwordHash string) error
 	MarkEmailVerified(ctx context.Context, id uuid.UUID, verifiedAt time.Time) (domain.User, error)
+	UpdatePhone(ctx context.Context, id uuid.UUID, phone *string) (domain.User, error)
 	RegisterFailedLogin(ctx context.Context, id uuid.UUID, failedAt time.Time, window time.Duration, maxAttempts int, lockoutDuration time.Duration) (domain.User, error)
 	ClearFailedLogin(ctx context.Context, id uuid.UUID) error
 }
@@ -39,6 +43,7 @@ type AuthSessionRepository interface {
 type AuthActionTokenRepository interface {
 	Create(ctx context.Context, token domain.AuthActionToken) (domain.AuthActionToken, error)
 	GetActiveByHash(ctx context.Context, purpose domain.AuthActionPurpose, tokenHash string, now time.Time) (domain.AuthActionToken, error)
+	GetLatestActiveByUserAndPurpose(ctx context.Context, userID uuid.UUID, purpose domain.AuthActionPurpose, now time.Time) (domain.AuthActionToken, error)
 	Consume(ctx context.Context, id uuid.UUID, consumedAt time.Time) (bool, error)
 	DeleteActiveByUserAndPurpose(ctx context.Context, userID uuid.UUID, purpose domain.AuthActionPurpose) error
 }
@@ -56,12 +61,17 @@ type Mailer interface {
 	Send(ctx context.Context, message mailer.Message) error
 }
 
+type SMSProvider interface {
+	Send(ctx context.Context, message mailer.SMSMessage) error
+}
+
 type AuthAuditLogger interface {
 	Record(ctx context.Context, entry observability.AuditEntry) error
 }
 
 type CreateUserInput struct {
 	Email           string
+	Phone           *string
 	PasswordHash    string
 	FullName        *string
 	Role            domain.UserRole
@@ -78,6 +88,7 @@ type CreateSessionInput struct {
 
 type RegisterInput struct {
 	Email     string
+	Phone     string
 	Password  string
 	FullName  string
 	UserAgent string
@@ -124,6 +135,28 @@ type PasswordResetConfirmInput struct {
 	NewPassword string
 }
 
+type EmailCodeRequestInput struct {
+	Email string
+}
+
+type EmailCodeLoginInput struct {
+	Email     string
+	Code      string
+	UserAgent string
+	IP        string
+}
+
+type PhoneCodeRequestInput struct {
+	Phone string
+}
+
+type PhoneCodeLoginInput struct {
+	Phone     string
+	Code      string
+	UserAgent string
+	IP        string
+}
+
 type AuthService struct {
 	users                AuthUserRepository
 	sessions             AuthSessionRepository
@@ -131,16 +164,19 @@ type AuthService struct {
 	jwt                  JWTProvider
 	passwords            PasswordProvider
 	mailer               Mailer
+	sms                  SMSProvider
 	audit                AuthAuditLogger
 	refreshTTL           time.Duration
 	emailVerifyTTL       time.Duration
 	passwordResetTTL     time.Duration
+	loginCodeTTL         time.Duration
 	loginFailureWindow   time.Duration
 	loginMaxAttempts     int
 	loginLockoutDuration time.Duration
 	appBaseURL           string
 	mailFrom             string
 	adminEmails          map[string]struct{}
+	exposeDevLoginCodes  bool
 	now                  func() time.Time
 }
 
@@ -151,6 +187,7 @@ func NewAuthService(
 	jwt JWTProvider,
 	passwords PasswordProvider,
 	mailer Mailer,
+	sms SMSProvider,
 	audit AuthAuditLogger,
 	appBaseURL string,
 	mailFrom string,
@@ -158,9 +195,11 @@ func NewAuthService(
 	refreshTTL time.Duration,
 	emailVerifyTTL time.Duration,
 	passwordResetTTL time.Duration,
+	loginCodeTTL time.Duration,
 	loginFailureWindow time.Duration,
 	loginMaxAttempts int,
 	loginLockoutDuration time.Duration,
+	exposeDevLoginCodes bool,
 ) *AuthService {
 	normalizedAdminEmails := make(map[string]struct{}, len(adminEmails))
 	for _, email := range adminEmails {
@@ -178,16 +217,19 @@ func NewAuthService(
 		jwt:                  jwt,
 		passwords:            passwords,
 		mailer:               mailer,
+		sms:                  sms,
 		audit:                audit,
 		refreshTTL:           refreshTTL,
 		emailVerifyTTL:       emailVerifyTTL,
 		passwordResetTTL:     passwordResetTTL,
+		loginCodeTTL:         loginCodeTTL,
 		loginFailureWindow:   loginFailureWindow,
 		loginMaxAttempts:     loginMaxAttempts,
 		loginLockoutDuration: loginLockoutDuration,
 		appBaseURL:           strings.TrimRight(strings.TrimSpace(appBaseURL), "/"),
 		mailFrom:             strings.TrimSpace(mailFrom),
 		adminEmails:          normalizedAdminEmails,
+		exposeDevLoginCodes:  exposeDevLoginCodes,
 		now: func() time.Time {
 			return time.Now().UTC()
 		},
@@ -196,6 +238,10 @@ func NewAuthService(
 
 func (s *AuthService) Register(ctx context.Context, input RegisterInput) (domain.AuthResult, error) {
 	email, err := normalizeEmail(input.Email)
+	if err != nil {
+		return domain.AuthResult{}, err
+	}
+	phone, err := normalizeOptionalPhone(input.Phone)
 	if err != nil {
 		return domain.AuthResult{}, err
 	}
@@ -211,6 +257,7 @@ func (s *AuthService) Register(ctx context.Context, input RegisterInput) (domain
 
 	user, err := s.users.Create(ctx, CreateUserInput{
 		Email:           email,
+		Phone:           phone,
 		PasswordHash:    passwordHash,
 		FullName:        fullName,
 		Role:            s.resolveRole(email),
@@ -361,6 +408,279 @@ func (s *AuthService) Login(ctx context.Context, input LoginInput) (domain.AuthR
 		EntityID:    ptrUUID(user.ID),
 		Metadata: map[string]any{
 			"email": user.Email,
+		},
+	})
+
+	return domain.AuthResult{
+		User:   user,
+		Tokens: tokens,
+	}, nil
+}
+
+func (s *AuthService) RequestEmailLoginCode(ctx context.Context, input EmailCodeRequestInput) (domain.AuthCodeDispatch, error) {
+	email, err := normalizeEmail(input.Email)
+	if err != nil {
+		return domain.AuthCodeDispatch{}, err
+	}
+
+	user, err := s.users.GetByEmail(ctx, email)
+	if err != nil {
+		if err == domain.ErrNotFound {
+			return s.genericLoginCodeDispatch(domain.AuthCodeChannelEmail), nil
+		}
+		return domain.AuthCodeDispatch{}, err
+	}
+	if !user.IsActive {
+		return s.genericLoginCodeDispatch(domain.AuthCodeChannelEmail), nil
+	}
+
+	code, err := s.issueLoginCode(ctx, user.ID, domain.AuthActionLoginEmail)
+	if err != nil {
+		return domain.AuthCodeDispatch{}, err
+	}
+
+	fullName := strings.TrimSpace(user.FullName)
+	greeting := "Hello"
+	if fullName != "" {
+		greeting = "Hello, " + fullName
+	}
+
+	if err := s.mailer.Send(ctx, mailer.Message{
+		To:      user.Email,
+		From:    s.mailFrom,
+		Subject: "Your login code",
+		Text: greeting + "\n\nUse this code to sign in:\n" + code + "\n\nThe code expires in " + s.loginCodeTTL.Round(time.Minute).String() + ".",
+	}); err != nil {
+		return domain.AuthCodeDispatch{}, err
+	}
+
+	s.recordAudit(ctx, observability.AuditEntry{
+		ActorUserID: ptrUUID(user.ID),
+		Action:      "auth.login_email_code_requested",
+		EntityType:  "user",
+		EntityID:    ptrUUID(user.ID),
+		Metadata: map[string]any{
+			"email": user.Email,
+		},
+	})
+
+	return s.loginCodeDispatch(domain.AuthCodeChannelEmail, user.Email, code), nil
+}
+
+func (s *AuthService) LoginWithEmailCode(ctx context.Context, input EmailCodeLoginInput) (domain.AuthResult, error) {
+	email, err := normalizeEmail(input.Email)
+	if err != nil {
+		return domain.AuthResult{}, domain.ErrInvalidLoginCode
+	}
+	code, err := normalizeLoginCode(input.Code)
+	if err != nil {
+		return domain.AuthResult{}, domain.ErrInvalidInput
+	}
+
+	user, err := s.users.GetByEmail(ctx, email)
+	if err != nil {
+		if err == domain.ErrNotFound {
+			return domain.AuthResult{}, domain.ErrInvalidLoginCode
+		}
+		return domain.AuthResult{}, err
+	}
+	if !user.IsActive {
+		return domain.AuthResult{}, domain.ErrInactiveUser
+	}
+
+	token, err := s.actionTokens.GetLatestActiveByUserAndPurpose(ctx, user.ID, domain.AuthActionLoginEmail, s.now())
+	if err != nil {
+		if err == domain.ErrNotFound {
+			s.recordAudit(ctx, observability.AuditEntry{
+				ActorUserID: ptrUUID(user.ID),
+				Action:      "auth.login_email_code_failed",
+				EntityType:  "user",
+				EntityID:    ptrUUID(user.ID),
+				Metadata: map[string]any{
+					"email":  user.Email,
+					"reason": "missing_code",
+				},
+			})
+			return domain.AuthResult{}, domain.ErrInvalidLoginCode
+		}
+		return domain.AuthResult{}, err
+	}
+	if token.TokenHash != security.HashToken(code) {
+		s.recordAudit(ctx, observability.AuditEntry{
+			ActorUserID: ptrUUID(user.ID),
+			Action:      "auth.login_email_code_failed",
+			EntityType:  "user",
+			EntityID:    ptrUUID(user.ID),
+			Metadata: map[string]any{
+				"email":  user.Email,
+				"reason": "invalid_code",
+			},
+		})
+		return domain.AuthResult{}, domain.ErrInvalidLoginCode
+	}
+
+	consumed, err := s.actionTokens.Consume(ctx, token.ID, s.now())
+	if err != nil {
+		return domain.AuthResult{}, err
+	}
+	if !consumed {
+		return domain.AuthResult{}, domain.ErrInvalidLoginCode
+	}
+
+	if !user.IsEmailVerified {
+		user, err = s.users.MarkEmailVerified(ctx, user.ID, s.now())
+		if err != nil {
+			return domain.AuthResult{}, err
+		}
+	}
+	if err := s.clearFailedLoginIfNeeded(ctx, user); err != nil {
+		return domain.AuthResult{}, err
+	}
+
+	tokens, err := s.issueTokens(ctx, user, input.UserAgent, input.IP)
+	if err != nil {
+		return domain.AuthResult{}, err
+	}
+
+	s.recordAudit(ctx, observability.AuditEntry{
+		ActorUserID: ptrUUID(user.ID),
+		Action:      "auth.login_email_code",
+		EntityType:  "user",
+		EntityID:    ptrUUID(user.ID),
+		Metadata: map[string]any{
+			"email": user.Email,
+		},
+	})
+
+	return domain.AuthResult{
+		User:   user,
+		Tokens: tokens,
+	}, nil
+}
+
+func (s *AuthService) RequestPhoneLoginCode(ctx context.Context, input PhoneCodeRequestInput) (domain.AuthCodeDispatch, error) {
+	phone, err := normalizePhone(input.Phone)
+	if err != nil {
+		return domain.AuthCodeDispatch{}, err
+	}
+
+	user, err := s.users.GetByPhone(ctx, phone)
+	if err != nil {
+		if err == domain.ErrNotFound {
+			return s.genericLoginCodeDispatch(domain.AuthCodeChannelPhone), nil
+		}
+		return domain.AuthCodeDispatch{}, err
+	}
+	if !user.IsActive || !user.IsEmailVerified {
+		return s.genericLoginCodeDispatch(domain.AuthCodeChannelPhone), nil
+	}
+
+	code, err := s.issueLoginCode(ctx, user.ID, domain.AuthActionLoginPhone)
+	if err != nil {
+		return domain.AuthCodeDispatch{}, err
+	}
+
+	if s.sms != nil {
+		if err := s.sms.Send(ctx, mailer.SMSMessage{
+			To:   phone,
+			Text: "Marketplace code: " + code + ". Expires in " + s.loginCodeTTL.Round(time.Minute).String() + ".",
+		}); err != nil {
+			return domain.AuthCodeDispatch{}, err
+		}
+	}
+
+	s.recordAudit(ctx, observability.AuditEntry{
+		ActorUserID: ptrUUID(user.ID),
+		Action:      "auth.login_phone_code_requested",
+		EntityType:  "user",
+		EntityID:    ptrUUID(user.ID),
+		Metadata: map[string]any{
+			"phone": phone,
+		},
+	})
+
+	return s.loginCodeDispatch(domain.AuthCodeChannelPhone, phone, code), nil
+}
+
+func (s *AuthService) LoginWithPhoneCode(ctx context.Context, input PhoneCodeLoginInput) (domain.AuthResult, error) {
+	phone, err := normalizePhone(input.Phone)
+	if err != nil {
+		return domain.AuthResult{}, domain.ErrInvalidLoginCode
+	}
+	code, err := normalizeLoginCode(input.Code)
+	if err != nil {
+		return domain.AuthResult{}, domain.ErrInvalidInput
+	}
+
+	user, err := s.users.GetByPhone(ctx, phone)
+	if err != nil {
+		if err == domain.ErrNotFound {
+			return domain.AuthResult{}, domain.ErrInvalidLoginCode
+		}
+		return domain.AuthResult{}, err
+	}
+	if !user.IsActive {
+		return domain.AuthResult{}, domain.ErrInactiveUser
+	}
+	if !user.IsEmailVerified {
+		return domain.AuthResult{}, domain.ErrEmailNotVerified
+	}
+
+	token, err := s.actionTokens.GetLatestActiveByUserAndPurpose(ctx, user.ID, domain.AuthActionLoginPhone, s.now())
+	if err != nil {
+		if err == domain.ErrNotFound {
+			s.recordAudit(ctx, observability.AuditEntry{
+				ActorUserID: ptrUUID(user.ID),
+				Action:      "auth.login_phone_code_failed",
+				EntityType:  "user",
+				EntityID:    ptrUUID(user.ID),
+				Metadata: map[string]any{
+					"phone":  phone,
+					"reason": "missing_code",
+				},
+			})
+			return domain.AuthResult{}, domain.ErrInvalidLoginCode
+		}
+		return domain.AuthResult{}, err
+	}
+	if token.TokenHash != security.HashToken(code) {
+		s.recordAudit(ctx, observability.AuditEntry{
+			ActorUserID: ptrUUID(user.ID),
+			Action:      "auth.login_phone_code_failed",
+			EntityType:  "user",
+			EntityID:    ptrUUID(user.ID),
+			Metadata: map[string]any{
+				"phone":  phone,
+				"reason": "invalid_code",
+			},
+		})
+		return domain.AuthResult{}, domain.ErrInvalidLoginCode
+	}
+
+	consumed, err := s.actionTokens.Consume(ctx, token.ID, s.now())
+	if err != nil {
+		return domain.AuthResult{}, err
+	}
+	if !consumed {
+		return domain.AuthResult{}, domain.ErrInvalidLoginCode
+	}
+
+	if err := s.clearFailedLoginIfNeeded(ctx, user); err != nil {
+		return domain.AuthResult{}, err
+	}
+
+	tokens, err := s.issueTokens(ctx, user, input.UserAgent, input.IP)
+	if err != nil {
+		return domain.AuthResult{}, err
+	}
+
+	s.recordAudit(ctx, observability.AuditEntry{
+		ActorUserID: ptrUUID(user.ID),
+		Action:      "auth.login_phone_code",
+		EntityType:  "user",
+		EntityID:    ptrUUID(user.ID),
+		Metadata: map[string]any{
+			"phone": phone,
 		},
 	})
 
@@ -943,6 +1263,60 @@ func (s *AuthService) issuePasswordReset(ctx context.Context, user domain.User) 
 	})
 }
 
+func (s *AuthService) issueLoginCode(ctx context.Context, userID uuid.UUID, purpose domain.AuthActionPurpose) (string, error) {
+	rawCode, err := generateNumericCode(6)
+	if err != nil {
+		return "", fmt.Errorf("generate login code: %w", err)
+	}
+
+	if err := s.actionTokens.DeleteActiveByUserAndPurpose(ctx, userID, purpose); err != nil {
+		return "", err
+	}
+
+	_, err = s.actionTokens.Create(ctx, domain.AuthActionToken{
+		ID:        uuid.New(),
+		UserID:    userID,
+		Purpose:   purpose,
+		TokenHash: security.HashToken(rawCode),
+		ExpiresAt: s.now().Add(s.loginCodeTTL),
+	})
+	if err != nil {
+		return "", err
+	}
+
+	return rawCode, nil
+}
+
+func (s *AuthService) genericLoginCodeDispatch(channel domain.AuthCodeChannel) domain.AuthCodeDispatch {
+	return domain.AuthCodeDispatch{
+		Accepted:  true,
+		Channel:   channel,
+		ExpiresIn: int64(s.loginCodeTTL.Seconds()),
+		Message:   "If the account exists, we sent a login code.",
+	}
+}
+
+func (s *AuthService) loginCodeDispatch(channel domain.AuthCodeChannel, destination string, code string) domain.AuthCodeDispatch {
+	result := domain.AuthCodeDispatch{
+		Accepted:          true,
+		Channel:           channel,
+		MaskedDestination: maskAuthDestination(channel, destination),
+		ExpiresIn:         int64(s.loginCodeTTL.Seconds()),
+		Message:           "Login code sent.",
+	}
+	if s.exposeDevLoginCodes {
+		result.DevCode = code
+	}
+	return result
+}
+
+func (s *AuthService) clearFailedLoginIfNeeded(ctx context.Context, user domain.User) error {
+	if user.FailedLoginAttempts == 0 && user.LastFailedLoginAt == nil && user.LockedUntil == nil {
+		return nil
+	}
+	return s.users.ClearFailedLogin(ctx, user.ID)
+}
+
 func (s *AuthService) createActionTokenLink(
 	ctx context.Context,
 	userID uuid.UUID,
@@ -992,6 +1366,19 @@ func normalizeActionToken(token string) (string, error) {
 	return normalized, nil
 }
 
+func normalizeLoginCode(code string) (string, error) {
+	normalized := strings.TrimSpace(code)
+	if len(normalized) != 6 {
+		return "", domain.ErrInvalidInput
+	}
+	for _, r := range normalized {
+		if r < '0' || r > '9' {
+			return "", domain.ErrInvalidInput
+		}
+	}
+	return normalized, nil
+}
+
 func isStrongPassword(password string) bool {
 	if len(password) < 8 || len(password) > 72 {
 		return false
@@ -1018,10 +1405,107 @@ func normalizeOptionalString(value string) *string {
 	return &v
 }
 
+func normalizeOptionalPhone(phone string) (*string, error) {
+	value := strings.TrimSpace(phone)
+	if value == "" {
+		return nil, nil
+	}
+
+	normalized, err := normalizePhone(value)
+	if err != nil {
+		return nil, err
+	}
+	return &normalized, nil
+}
+
+func normalizePhone(phone string) (string, error) {
+	trimmed := strings.TrimSpace(phone)
+	if trimmed == "" {
+		return "", domain.ErrInvalidInput
+	}
+
+	builder := strings.Builder{}
+	builder.Grow(len(trimmed))
+
+	for index, r := range trimmed {
+		switch {
+		case r >= '0' && r <= '9':
+			builder.WriteRune(r)
+		case r == '+' && index == 0:
+			builder.WriteRune(r)
+		}
+	}
+
+	normalized := builder.String()
+	if normalized == "" || normalized == "+" {
+		return "", domain.ErrInvalidInput
+	}
+	if normalized[0] != '+' {
+		normalized = "+" + normalized
+	}
+
+	digitCount := 0
+	for _, r := range normalized {
+		if r >= '0' && r <= '9' {
+			digitCount++
+		}
+	}
+	if digitCount < 10 || digitCount > 15 {
+		return "", domain.ErrInvalidInput
+	}
+	return normalized, nil
+}
+
 func normalizeUserAgent(ua string) string {
 	return strings.TrimSpace(ua)
 }
 
 func normalizeIP(ip string) string {
 	return strings.TrimSpace(ip)
+}
+
+func generateNumericCode(length int) (string, error) {
+	if length <= 0 {
+		return "", domain.ErrInvalidInput
+	}
+
+	digits := make([]byte, length)
+	for index := range digits {
+		value, err := rand.Int(rand.Reader, big.NewInt(10))
+		if err != nil {
+			return "", err
+		}
+		digits[index] = byte('0' + value.Int64())
+	}
+	return string(digits), nil
+}
+
+func maskAuthDestination(channel domain.AuthCodeChannel, destination string) string {
+	switch channel {
+	case domain.AuthCodeChannelPhone:
+		return maskPhone(destination)
+	default:
+		return maskEmail(destination)
+	}
+}
+
+func maskEmail(email string) string {
+	parts := strings.SplitN(strings.TrimSpace(email), "@", 2)
+	if len(parts) != 2 {
+		return ""
+	}
+
+	local := parts[0]
+	if len(local) <= 2 {
+		return local[:1] + "***@" + parts[1]
+	}
+	return local[:1] + "***" + local[len(local)-1:] + "@" + parts[1]
+}
+
+func maskPhone(phone string) string {
+	normalized := strings.TrimSpace(phone)
+	if len(normalized) <= 6 {
+		return normalized
+	}
+	return normalized[:3] + "*****" + normalized[len(normalized)-2:]
 }

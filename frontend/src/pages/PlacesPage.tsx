@@ -38,7 +38,7 @@ export const PlacesPage = () => {
     dispatch(fetchPlacesThunk())
   }, [dispatch])
 
-  const title = useMemo(() => (editingId ? 'Edit place' : 'Add place'), [editingId])
+  const title = useMemo(() => (editingId ? 'Редактирование адреса' : 'Новый адрес доставки'), [editingId])
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault()
@@ -85,81 +85,114 @@ export const PlacesPage = () => {
 
   return (
     <div className={styles.page}>
-      <h1>My places</h1>
+      <header className={styles.header}>
+        <div>
+          <span className="badge-pill">Адреса</span>
+          <h1>Места доставки</h1>
+          <p>Эти адреса используются на checkout и в верхней части витрины как предпочтительное место получения.</p>
+        </div>
+      </header>
 
-      {status === 'loading' ? <AppLoader label="Loading places..." /> : null}
+      {status === 'loading' ? <AppLoader label="Загружаем адреса..." /> : null}
       {error ? <ErrorMessage message={error} /> : null}
 
-      <section className={styles.formCard}>
-        <h2>{title}</h2>
-        <form className={styles.form} onSubmit={handleSubmit}>
-          <input
-            value={form.title}
-            onChange={(event) => setForm((prev) => ({ ...prev, title: event.target.value }))}
-            placeholder="Title"
-            required
-          />
-          <input
-            value={form.addressText}
-            onChange={(event) => setForm((prev) => ({ ...prev, addressText: event.target.value }))}
-            placeholder="Address"
-            required
-          />
-          <div className={styles.row}>
-            <input
-              value={form.lat}
-              onChange={(event) => setForm((prev) => ({ ...prev, lat: event.target.value }))}
-              placeholder="Latitude"
-            />
-            <input
-              value={form.lon}
-              onChange={(event) => setForm((prev) => ({ ...prev, lon: event.target.value }))}
-              placeholder="Longitude"
-            />
-          </div>
-          <div className={styles.actions}>
-            <button type="submit" disabled={mutationStatus === 'loading'}>
-              {editingId ? 'Save' : 'Create'}
-            </button>
-            {editingId ? (
-              <button
-                type="button"
-                className={styles.secondary}
-                onClick={() => {
-                  setEditingId(null)
-                  setForm(emptyForm)
-                }}
-              >
-                Cancel
-              </button>
-            ) : null}
-          </div>
-        </form>
-      </section>
-
-      <section className={styles.list}>
-        {items.map((place) => (
-          <article className={styles.item} key={place.id}>
+      <div className={styles.layout}>
+        <section className={`${styles.formCard} page-card`}>
+          <div className={styles.sectionHeader}>
             <div>
-              <h3>{place.title}</h3>
-              <p>{place.addressText}</p>
-              {place.lat !== undefined && place.lon !== undefined ? (
-                <small>
-                  {place.lat}, {place.lon}
-                </small>
-              ) : null}
+              <span className="badge-pill">{editingId ? 'Редактирование' : 'Создание'}</span>
+              <h2>{title}</h2>
+            </div>
+          </div>
+
+          <form className={styles.form} onSubmit={handleSubmit}>
+            <label>
+              Название адреса
+              <input
+                value={form.title}
+                onChange={(event) => setForm((prev) => ({ ...prev, title: event.target.value }))}
+                placeholder="Дом, офис, склад"
+                required
+              />
+            </label>
+            <label>
+              Адрес
+              <input
+                value={form.addressText}
+                onChange={(event) => setForm((prev) => ({ ...prev, addressText: event.target.value }))}
+                placeholder="Полный адрес для доставки"
+                required
+              />
+            </label>
+            <div className={styles.row}>
+              <label>
+                Широта
+                <input
+                  value={form.lat}
+                  onChange={(event) => setForm((prev) => ({ ...prev, lat: event.target.value }))}
+                  placeholder="55.75"
+                />
+              </label>
+              <label>
+                Долгота
+                <input
+                  value={form.lon}
+                  onChange={(event) => setForm((prev) => ({ ...prev, lon: event.target.value }))}
+                  placeholder="37.61"
+                />
+              </label>
             </div>
             <div className={styles.actions}>
-              <button type="button" onClick={() => startEdit(place.id)}>
-                Edit
+              <button type="submit" className="action-primary" disabled={mutationStatus === 'loading'}>
+                {editingId ? 'Сохранить адрес' : 'Добавить адрес'}
               </button>
-              <button type="button" className={styles.danger} onClick={() => handleDelete(place.id)}>
-                Delete
-              </button>
+              {editingId ? (
+                <button
+                  type="button"
+                  className="action-secondary"
+                  onClick={() => {
+                    setEditingId(null)
+                    setForm(emptyForm)
+                  }}
+                >
+                  Отменить
+                </button>
+              ) : null}
             </div>
-          </article>
-        ))}
-      </section>
+          </form>
+        </section>
+
+        <section className={styles.list}>
+          {items.length === 0 && status !== 'loading' ? (
+            <div className={`${styles.empty} empty-state`}>
+              <h2>Адресов пока нет</h2>
+              <p>Добавьте первое место доставки, чтобы использовать его в оформлении заказа.</p>
+            </div>
+          ) : null}
+
+          {items.map((place) => (
+            <article className={styles.item} key={place.id}>
+              <div>
+                <h3>{place.title}</h3>
+                <p>{place.addressText}</p>
+                {place.lat !== undefined && place.lon !== undefined ? (
+                  <small>
+                    Координаты: {place.lat}, {place.lon}
+                  </small>
+                ) : null}
+              </div>
+              <div className={styles.actions}>
+                <button type="button" className="action-secondary" onClick={() => startEdit(place.id)}>
+                  Изменить
+                </button>
+                <button type="button" className="action-danger" onClick={() => handleDelete(place.id)}>
+                  Удалить
+                </button>
+              </div>
+            </article>
+          ))}
+        </section>
+      </div>
     </div>
   )
 }

@@ -81,9 +81,33 @@ export const loginThunk = createAsyncThunk<
   }
 })
 
+export const loginWithEmailCodeThunk = createAsyncThunk<
+  AuthResponse<User>,
+  { email: string; code: string },
+  { rejectValue: ApiError }
+>('auth/loginWithEmailCode', async (payload, { rejectWithValue }) => {
+  try {
+    return await authService.loginWithEmailCode(payload)
+  } catch (error) {
+    return rejectWithValue(toApiError(error))
+  }
+})
+
+export const loginWithPhoneCodeThunk = createAsyncThunk<
+  AuthResponse<User>,
+  { phone: string; code: string },
+  { rejectValue: ApiError }
+>('auth/loginWithPhoneCode', async (payload, { rejectWithValue }) => {
+  try {
+    return await authService.loginWithPhoneCode(payload)
+  } catch (error) {
+    return rejectWithValue(toApiError(error))
+  }
+})
+
 export const registerThunk = createAsyncThunk<
   AuthResponse<User>,
-  { name: string; email: string; password: string },
+  { name: string; email: string; password: string; phone?: string },
   { rejectValue: ApiError }
 >('auth/register', async (payload, { rejectWithValue }) => {
   try {
@@ -149,6 +173,32 @@ const authSlice = createSlice({
         applySuccessfulAuth(state, action.payload)
       })
       .addCase(loginThunk.rejected, (state, action) => {
+        applyFailedAuth(state, action.payload)
+      })
+      .addCase(loginWithEmailCodeThunk.pending, (state) => {
+        state.status = 'loading'
+        state.error = null
+        state.errorCode = null
+        state.notice = null
+      })
+      .addCase(loginWithEmailCodeThunk.fulfilled, (state, action) => {
+        state.status = 'succeeded'
+        applySuccessfulAuth(state, action.payload)
+      })
+      .addCase(loginWithEmailCodeThunk.rejected, (state, action) => {
+        applyFailedAuth(state, action.payload)
+      })
+      .addCase(loginWithPhoneCodeThunk.pending, (state) => {
+        state.status = 'loading'
+        state.error = null
+        state.errorCode = null
+        state.notice = null
+      })
+      .addCase(loginWithPhoneCodeThunk.fulfilled, (state, action) => {
+        state.status = 'succeeded'
+        applySuccessfulAuth(state, action.payload)
+      })
+      .addCase(loginWithPhoneCodeThunk.rejected, (state, action) => {
         applyFailedAuth(state, action.payload)
       })
       .addCase(registerThunk.pending, (state) => {

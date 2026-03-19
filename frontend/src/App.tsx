@@ -7,8 +7,8 @@ import { isCookieAuthMode } from '@/config/auth'
 import { AUTH_UNAUTHORIZED_EVENT } from '@/services/apiClient'
 import { AppRouter } from '@/routes/AppRouter'
 import { useAppDispatch, useAppSelector } from '@/store/hooks'
-import { forceLogout, setUser } from '@/store/slices/authSlice'
-import { clearFavorites, fetchFavoritesThunk } from '@/store/slices/favoritesSlice'
+import { forceLogout } from '@/store/slices/authSlice'
+import { fetchFavoritesThunk } from '@/store/slices/favoritesSlice'
 import { fetchProfileThunk } from '@/store/slices/userSlice'
 
 const App = () => {
@@ -25,9 +25,7 @@ const App = () => {
     }
 
     dispatch(fetchProfileThunk()).then((result) => {
-      if (fetchProfileThunk.fulfilled.match(result)) {
-        dispatch(setUser(result.payload))
-      } else {
+      if (!fetchProfileThunk.fulfilled.match(result)) {
         dispatch(forceLogout())
       }
     })
@@ -44,7 +42,6 @@ const App = () => {
   useEffect(() => {
     const handleUnauthorized = () => {
       dispatch(forceLogout())
-      dispatch(clearFavorites())
       navigate('/login')
     }
 

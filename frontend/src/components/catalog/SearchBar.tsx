@@ -9,16 +9,25 @@ import styles from '@/components/catalog/SearchBar.module.scss'
 interface SearchBarProps {
   initialValue?: string
   onSearch: (value: string) => void
+  placeholder?: string
+  submitLabel?: string
+  variant?: 'hero' | 'header' | 'inline'
 }
 
 const SUGGESTION_KIND_LABELS: Record<string, string> = {
-  product: 'Product',
-  brand: 'Brand',
-  category: 'Category',
-  query: 'Search',
+  product: 'Товар',
+  brand: 'Бренд',
+  category: 'Категория',
+  query: 'Запрос',
 }
 
-export const SearchBar = ({ initialValue = '', onSearch }: SearchBarProps) => {
+export const SearchBar = ({
+  initialValue = '',
+  onSearch,
+  placeholder = 'Искать товары, бренды и категории',
+  submitLabel = 'Найти',
+  variant = 'inline',
+}: SearchBarProps) => {
   const [value, setValue] = useState(initialValue)
   const [focused, setFocused] = useState(false)
   const [loading, setLoading] = useState(false)
@@ -26,6 +35,10 @@ export const SearchBar = ({ initialValue = '', onSearch }: SearchBarProps) => {
   const [popularSearches, setPopularSearches] = useState<PopularSearch[]>([])
   const inputRef = useRef<HTMLInputElement>(null)
   const wrapperRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    setValue(initialValue)
+  }, [initialValue])
 
   useEffect(() => {
     if (!focused) {
@@ -139,8 +152,8 @@ export const SearchBar = ({ initialValue = '', onSearch }: SearchBarProps) => {
           onChange={(event) => setValue(event.target.value)}
           onFocus={() => setFocused(true)}
           onKeyDown={handleKeyDown}
-          placeholder="Search products, brands, and categories..."
-          aria-label="Search products"
+          placeholder={placeholder}
+          aria-label="Поиск по каталогу"
         />
         <svg
           className={styles.searchIcon}
@@ -158,7 +171,7 @@ export const SearchBar = ({ initialValue = '', onSearch }: SearchBarProps) => {
           type="button"
           className={`${styles.clearButton} ${value ? styles.clearButtonVisible : ''}`}
           onClick={handleClear}
-          aria-label="Clear search"
+          aria-label="Очистить поиск"
         >
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
             <line x1="18" y1="6" x2="6" y2="18" />
@@ -170,10 +183,10 @@ export const SearchBar = ({ initialValue = '', onSearch }: SearchBarProps) => {
           <div className={styles.dropdown}>
             {value.trim().length >= 2 ? (
               <>
-                <div className={styles.dropdownTitle}>Suggestions</div>
-                {loading ? <p className={styles.dropdownState}>Loading suggestions...</p> : null}
+                <div className={styles.dropdownTitle}>Подсказки</div>
+                {loading ? <p className={styles.dropdownState}>Загружаем подсказки...</p> : null}
                 {!loading && suggestions.length === 0 ? (
-                  <p className={styles.dropdownState}>No suggestions yet. Press Enter to search anyway.</p>
+                  <p className={styles.dropdownState}>Подсказок пока нет. Нажмите Enter, чтобы выполнить поиск.</p>
                 ) : null}
                 {suggestions.map((item) => (
                   <button
@@ -183,14 +196,14 @@ export const SearchBar = ({ initialValue = '', onSearch }: SearchBarProps) => {
                     onClick={() => runSearch(item.text)}
                   >
                     <span>{item.text}</span>
-                    <small>{SUGGESTION_KIND_LABELS[item.kind] ?? 'Suggestion'}</small>
+                    <small>{SUGGESTION_KIND_LABELS[item.kind] ?? 'Запрос'}</small>
                   </button>
                 ))}
               </>
             ) : (
               <>
-                <div className={styles.dropdownTitle}>Popular searches</div>
-                {loading ? <p className={styles.dropdownState}>Loading popular searches...</p> : null}
+                <div className={styles.dropdownTitle}>Популярные запросы</div>
+                {loading ? <p className={styles.dropdownState}>Загружаем популярные запросы...</p> : null}
                 {!loading ? (
                   <div className={styles.popularList}>
                     {popularSearches.map((item) => (
@@ -211,12 +224,12 @@ export const SearchBar = ({ initialValue = '', onSearch }: SearchBarProps) => {
           </div>
         ) : null}
       </div>
-      <button className={styles.button} type="submit">
+      <button className={`${styles.button} ${variant === 'header' ? styles.buttonHeader : ''}`} type="submit">
         <svg className={styles.buttonIcon} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
           <circle cx="11" cy="11" r="8" />
           <path d="m21 21-4.35-4.35" />
         </svg>
-        <span className={styles.buttonText}>Search</span>
+        <span className={styles.buttonText}>{submitLabel}</span>
       </button>
     </form>
   )

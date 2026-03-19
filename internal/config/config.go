@@ -23,6 +23,7 @@ type Config struct {
 	RefreshTokenTTL               time.Duration
 	EmailVerifyTTL                time.Duration
 	PasswordResetTTL              time.Duration
+	LoginCodeTTL                  time.Duration
 	LoginFailureWindow            time.Duration
 	LoginMaxAttempts              int
 	LoginLockoutDuration          time.Duration
@@ -69,6 +70,7 @@ type rawConfig struct {
 	RefreshTokenTTL               string `validate:"required"`
 	EmailVerifyTTL                string `validate:"required"`
 	PasswordResetTTL              string `validate:"required"`
+	LoginCodeTTL                  string `validate:"required"`
 	LoginFailureWindow            string `validate:"required"`
 	LoginMaxAttempts              int    `validate:"required,min=1,max=50"`
 	LoginLockoutDuration          string `validate:"required"`
@@ -119,6 +121,7 @@ func Load() (Config, error) {
 		RefreshTokenTTL:               env("REFRESH_TOKEN_TTL", "720h"),
 		EmailVerifyTTL:                env("EMAIL_VERIFY_TTL", "24h"),
 		PasswordResetTTL:              env("PASSWORD_RESET_TTL", "1h"),
+		LoginCodeTTL:                  env("AUTH_LOGIN_CODE_TTL", "10m"),
 		LoginFailureWindow:            env("AUTH_LOGIN_FAILURE_WINDOW", "15m"),
 		LoginMaxAttempts:              envInt("AUTH_LOGIN_MAX_ATTEMPTS", 5),
 		LoginLockoutDuration:          env("AUTH_LOGIN_LOCKOUT_DURATION", "15m"),
@@ -175,6 +178,10 @@ func Load() (Config, error) {
 	if err != nil {
 		return Config{}, fmt.Errorf("parse PASSWORD_RESET_TTL: %w", err)
 	}
+	loginCodeTTL, err := time.ParseDuration(raw.LoginCodeTTL)
+	if err != nil {
+		return Config{}, fmt.Errorf("parse AUTH_LOGIN_CODE_TTL: %w", err)
+	}
 	loginFailureWindow, err := time.ParseDuration(raw.LoginFailureWindow)
 	if err != nil {
 		return Config{}, fmt.Errorf("parse AUTH_LOGIN_FAILURE_WINDOW: %w", err)
@@ -211,6 +218,9 @@ func Load() (Config, error) {
 	}
 	if passwordResetTTL <= 0 {
 		return Config{}, fmt.Errorf("PASSWORD_RESET_TTL must be greater than zero")
+	}
+	if loginCodeTTL <= 0 {
+		return Config{}, fmt.Errorf("AUTH_LOGIN_CODE_TTL must be greater than zero")
 	}
 	if loginFailureWindow <= 0 || loginLockoutDuration <= 0 || authRegisterRateWindow <= 0 || authLoginRateWindow <= 0 || authRefreshRateWindow <= 0 || authPasswordResetRateWindow <= 0 || authVerifyEmailRateWindow <= 0 {
 		return Config{}, fmt.Errorf("security windows and lockout duration must be greater than zero")
@@ -268,6 +278,7 @@ func Load() (Config, error) {
 		RefreshTokenTTL:               refreshTTL,
 		EmailVerifyTTL:                emailVerifyTTL,
 		PasswordResetTTL:              passwordResetTTL,
+		LoginCodeTTL:                  loginCodeTTL,
 		LoginFailureWindow:            loginFailureWindow,
 		LoginMaxAttempts:              raw.LoginMaxAttempts,
 		LoginLockoutDuration:          loginLockoutDuration,

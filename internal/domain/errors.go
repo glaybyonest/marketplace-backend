@@ -14,6 +14,7 @@ var (
 	ErrInactiveUser     = errors.New("inactive user")
 	ErrEmailNotVerified = errors.New("email not verified")
 	ErrInvalidToken     = errors.New("invalid token")
+	ErrInvalidLoginCode = errors.New("invalid login code")
 	ErrTokenReused      = errors.New("refresh token already used")
 	ErrSessionClosed    = errors.New("session is closed")
 	ErrRateLimited      = errors.New("rate limited")

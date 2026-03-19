@@ -105,16 +105,19 @@ const Content = ({ categories, values, onChange, onReset, onCloseMobile }: Conte
   }
 
   return (
-    <section className={styles.panel} aria-label="Catalog filters">
+    <section className={styles.panel} aria-label="Фильтры каталога">
       <div className={styles.header}>
-        <h2>Filters</h2>
+        <div>
+          <span className={styles.kicker}>Подбор</span>
+          <h2>Фильтры</h2>
+        </div>
         {onCloseMobile ? (
           <button className={styles.close} type="button" onClick={onCloseMobile}>
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
               <line x1="18" y1="6" x2="6" y2="18" />
               <line x1="6" y1="6" x2="18" y2="18" />
             </svg>
-            Close
+            Закрыть
           </button>
         ) : null}
       </div>
@@ -127,7 +130,7 @@ const Content = ({ categories, values, onChange, onReset, onCloseMobile }: Conte
             onClick={() => setCategoryOpen(!categoryOpen)}
             aria-expanded={categoryOpen}
           >
-            <span>Categories</span>
+            <span>Категории</span>
             <svg className={`${styles.accordionIcon} ${categoryOpen ? styles.accordionIconOpen : ''}`} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
               <polyline points="6 9 12 15 18 9" />
             </svg>
@@ -139,7 +142,7 @@ const Content = ({ categories, values, onChange, onReset, onCloseMobile }: Conte
                 className={`${styles.categoryItem} ${!values.category_id ? styles.categoryItemActive : ''}`}
                 onClick={() => onChange({ category_id: undefined })}
               >
-                All categories
+                Все категории
               </button>
               {categories.map((category) => (
                 <button
@@ -154,9 +157,7 @@ const Content = ({ categories, values, onChange, onReset, onCloseMobile }: Conte
             </div>
           </div>
         </div>
-      </div>
 
-      <div className={styles.accordion}>
         <div className={styles.accordionItem}>
           <button
             type="button"
@@ -164,7 +165,7 @@ const Content = ({ categories, values, onChange, onReset, onCloseMobile }: Conte
             onClick={() => setPriceOpen(!priceOpen)}
             aria-expanded={priceOpen}
           >
-            <span>Price</span>
+            <span>Цена</span>
             <svg className={`${styles.accordionIcon} ${priceOpen ? styles.accordionIconOpen : ''}`} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
               <polyline points="6 9 12 15 18 9" />
             </svg>
@@ -172,7 +173,7 @@ const Content = ({ categories, values, onChange, onReset, onCloseMobile }: Conte
           <div className={`${styles.accordionContent} ${priceOpen ? styles.accordionContentOpen : ''}`}>
             <div className={styles.row}>
               <label className={styles.field}>
-                <span className={styles.fieldLabel}>Min price</span>
+                <span className={styles.fieldLabel}>От</span>
                 <input
                   className={styles.priceInput}
                   type="number"
@@ -184,7 +185,7 @@ const Content = ({ categories, values, onChange, onReset, onCloseMobile }: Conte
                 />
               </label>
               <label className={styles.field}>
-                <span className={styles.fieldLabel}>Max price</span>
+                <span className={styles.fieldLabel}>До</span>
                 <input
                   className={styles.priceInput}
                   type="number"
@@ -198,9 +199,7 @@ const Content = ({ categories, values, onChange, onReset, onCloseMobile }: Conte
             </div>
           </div>
         </div>
-      </div>
 
-      <div className={styles.accordion}>
         <div className={styles.accordionItem}>
           <button
             type="button"
@@ -208,7 +207,7 @@ const Content = ({ categories, values, onChange, onReset, onCloseMobile }: Conte
             onClick={() => setStockOpen(!stockOpen)}
             aria-expanded={stockOpen}
           >
-            <span>Availability</span>
+            <span>Наличие</span>
             <svg className={`${styles.accordionIcon} ${stockOpen ? styles.accordionIconOpen : ''}`} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
               <polyline points="6 9 12 15 18 9" />
             </svg>
@@ -223,14 +222,12 @@ const Content = ({ categories, values, onChange, onReset, onCloseMobile }: Conte
                   onChange={(event) => onChange({ in_stock: event.target.checked ? true : undefined })}
                 />
                 <span className={styles.radioCustom}><span className={styles.radioDot} /></span>
-                <span>Only in stock</span>
+                <span>Только в наличии</span>
               </label>
             </div>
           </div>
         </div>
-      </div>
 
-      <div className={styles.accordion}>
         <div className={styles.accordionItem}>
           <button
             type="button"
@@ -238,7 +235,7 @@ const Content = ({ categories, values, onChange, onReset, onCloseMobile }: Conte
             onClick={() => setSortOpen(!sortOpen)}
             aria-expanded={sortOpen}
           >
-            <span>Sorting</span>
+            <span>Сортировка</span>
             <svg className={`${styles.accordionIcon} ${sortOpen ? styles.accordionIconOpen : ''}`} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
               <polyline points="6 9 12 15 18 9" />
             </svg>
@@ -254,7 +251,7 @@ const Content = ({ categories, values, onChange, onReset, onCloseMobile }: Conte
                   onChange={() => onChange({ sort: 'new' })}
                 />
                 <span className={styles.radioCustom}><span className={styles.radioDot} /></span>
-                <span>Newest first</span>
+                <span>Сначала новинки</span>
               </label>
               <label className={`${styles.radioLabel} ${values.sort === 'price_asc' ? styles.radioLabelActive : ''}`}>
                 <input
@@ -265,7 +262,7 @@ const Content = ({ categories, values, onChange, onReset, onCloseMobile }: Conte
                   onChange={() => onChange({ sort: 'price_asc' })}
                 />
                 <span className={styles.radioCustom}><span className={styles.radioDot} /></span>
-                <span>Price low to high</span>
+                <span>Сначала дешевле</span>
               </label>
               <label className={`${styles.radioLabel} ${values.sort === 'price_desc' ? styles.radioLabelActive : ''}`}>
                 <input
@@ -276,22 +273,22 @@ const Content = ({ categories, values, onChange, onReset, onCloseMobile }: Conte
                   onChange={() => onChange({ sort: 'price_desc' })}
                 />
                 <span className={styles.radioCustom}><span className={styles.radioDot} /></span>
-                <span>Price high to low</span>
+                <span>Сначала дороже</span>
               </label>
             </div>
           </div>
         </div>
       </div>
 
-      {hasActiveFilters && (
+      {hasActiveFilters ? (
         <button type="button" className={styles.reset} onClick={onReset}>
           <svg className={styles.resetIcon} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
             <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8" />
             <path d="M3 3v5h5" />
           </svg>
-          Reset filters
+          Сбросить фильтры
         </button>
-      )}
+      ) : null}
     </section>
   )
 }

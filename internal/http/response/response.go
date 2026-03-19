@@ -80,6 +80,8 @@ func DescribeDomainError(err error) DomainErrorDescriptor {
 		return DomainErrorDescriptor{Status: http.StatusBadRequest, Code: "cart_empty", Message: "cart is empty"}
 	case errors.Is(err, domain.ErrUnauthorized):
 		return DomainErrorDescriptor{Status: http.StatusUnauthorized, Code: "unauthorized", Message: "unauthorized"}
+	case errors.Is(err, domain.ErrInvalidLoginCode):
+		return DomainErrorDescriptor{Status: http.StatusUnauthorized, Code: "invalid_login_code", Message: "login code is invalid or expired"}
 	case errors.Is(err, domain.ErrInvalidToken):
 		return DomainErrorDescriptor{Status: http.StatusBadRequest, Code: "invalid_token", Message: "invalid or expired token"}
 	case errors.Is(err, domain.ErrInactiveUser):

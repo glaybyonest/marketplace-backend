@@ -48,7 +48,7 @@ export const AdminCategoriesPage = () => {
       const nextItems = await categoryService.getCategories()
       setItems(nextItems)
     } catch (loadError) {
-      setError(getErrorMessage(loadError, 'Failed to load categories'))
+      setError(getErrorMessage(loadError, 'Не удалось загрузить категории'))
     } finally {
       setLoading(false)
     }
@@ -84,7 +84,7 @@ export const AdminCategoriesPage = () => {
       await loadCategories()
       resetForm()
     } catch (submitError) {
-      setError(getErrorMessage(submitError, 'Failed to save category'))
+      setError(getErrorMessage(submitError, 'Не удалось сохранить категорию'))
     } finally {
       setSubmitting(false)
     }
@@ -100,7 +100,7 @@ export const AdminCategoriesPage = () => {
   }
 
   const handleDelete = async (category: Category) => {
-    if (!window.confirm(`Delete category "${category.name}"?`)) {
+    if (!window.confirm(`Удалить категорию «${category.name}»?`)) {
       return
     }
 
@@ -113,7 +113,7 @@ export const AdminCategoriesPage = () => {
         resetForm()
       }
     } catch (deleteError) {
-      setError(getErrorMessage(deleteError, 'Failed to delete category'))
+      setError(getErrorMessage(deleteError, 'Не удалось удалить категорию'))
     } finally {
       setSubmitting(false)
     }
@@ -123,27 +123,28 @@ export const AdminCategoriesPage = () => {
     <div className={styles.page}>
       <section className={styles.hero}>
         <div>
-          <h1>Categories</h1>
-          <p>Maintain category tree and slugs used by the catalog and admin filters.</p>
+          <span className="badge-pill">Категории</span>
+          <h1>Структура каталога</h1>
+          <p>Поддерживайте дерево категорий, slug-и и родительские связи, на которые опираются каталог, фильтры и быстрые ссылки в шапке.</p>
         </div>
         <AdminNav />
       </section>
 
-      {loading ? <AppLoader label="Loading categories..." /> : null}
+      {loading ? <AppLoader label="Загружаем категории..." /> : null}
       {error ? <ErrorMessage message={error} /> : null}
 
       <section className={styles.contentGrid}>
         <article className={styles.panel}>
-          <h2>{editingId ? 'Edit category' : 'New category'}</h2>
-          <p>Leave slug empty to generate it from the name. Parent is optional.</p>
+          <h2>{editingId ? 'Редактирование категории' : 'Новая категория'}</h2>
+          <p>Slug можно оставить пустым, тогда сервер сформирует его автоматически. Родительская категория необязательна.</p>
 
           <form className={styles.form} onSubmit={handleSubmit}>
             <label>
-              Name
+              Название
               <input
                 value={formState.name}
                 onChange={(event) => setFormState((current) => ({ ...current, name: event.target.value }))}
-                placeholder="Concrete mixes"
+                placeholder="Электроника"
                 required
               />
             </label>
@@ -153,17 +154,17 @@ export const AdminCategoriesPage = () => {
               <input
                 value={formState.slug}
                 onChange={(event) => setFormState((current) => ({ ...current, slug: event.target.value }))}
-                placeholder="concrete-mixes"
+                placeholder="electronics"
               />
             </label>
 
             <label>
-              Parent category
+              Родительская категория
               <select
                 value={formState.parentId}
                 onChange={(event) => setFormState((current) => ({ ...current, parentId: event.target.value }))}
               >
-                <option value="">Root category</option>
+                <option value="">Корневая категория</option>
                 {parentOptions.map((category) => (
                   <option key={category.id} value={category.id}>
                     {category.name}
@@ -174,10 +175,10 @@ export const AdminCategoriesPage = () => {
 
             <div className={styles.formActions}>
               <button type="submit" className={styles.primaryButton} disabled={submitting}>
-                {submitting ? 'Saving...' : editingId ? 'Update category' : 'Create category'}
+                {submitting ? 'Сохраняем...' : editingId ? 'Обновить категорию' : 'Создать категорию'}
               </button>
               <button type="button" className={styles.secondaryButton} onClick={resetForm} disabled={submitting}>
-                Reset
+                Сбросить форму
               </button>
             </div>
           </form>
@@ -186,30 +187,30 @@ export const AdminCategoriesPage = () => {
         <article className={styles.panel}>
           <div className={styles.toolbar}>
             <div>
-              <h2>Existing categories</h2>
-              <p>{items.length} categories loaded.</p>
+              <h2>Текущие категории</h2>
+              <p>Загружено: {items.length}</p>
             </div>
           </div>
 
           {items.length === 0 && !loading ? (
             <div className={styles.empty}>
-              <h2>No categories yet</h2>
-              <p>Create the first category from the form.</p>
+              <h2>Категорий пока нет</h2>
+              <p>Создайте первую категорию с помощью формы слева.</p>
             </div>
           ) : (
             <div className={styles.list}>
               {items.map((category) => {
-                const parentName = category.parentId ? categoryMap.get(category.parentId)?.name ?? 'Unknown parent' : 'Root'
+                const parentName = category.parentId ? categoryMap.get(category.parentId)?.name ?? 'Неизвестный родитель' : 'Корень'
                 return (
                   <article key={category.id} className={styles.listCard}>
                     <div className={styles.listHeader}>
                       <div>
                         <h3>{category.name}</h3>
-                        <p className={styles.listMeta}>Slug: {category.slug ?? '-'} · Parent: {parentName}</p>
+                        <p className={styles.listMeta}>Slug: {category.slug ?? '-'} • Родитель: {parentName}</p>
                       </div>
                       <div className={styles.rowActions}>
                         <button type="button" className={styles.ghostButton} onClick={() => handleEdit(category)}>
-                          Edit
+                          Изменить
                         </button>
                         <button
                           type="button"
@@ -217,7 +218,7 @@ export const AdminCategoriesPage = () => {
                           onClick={() => handleDelete(category)}
                           disabled={submitting}
                         >
-                          Delete
+                          Удалить
                         </button>
                       </div>
                     </div>
